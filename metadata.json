@@ -1,0 +1,6 @@
+{
+  "name": "FamilyHub",
+  "description": "A beautiful, modern, mobile-first Family + Personal Management System with real-time style family chat, private personal space, and household organization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
