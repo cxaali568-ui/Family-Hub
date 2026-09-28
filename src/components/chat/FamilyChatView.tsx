@@ -49,8 +49,8 @@ export const FamilyChatView: React.FC = () => {
     chatService.sendMessage({
       chatRoomId: 'room-main',
       senderId: user.id,
-      senderName: user.name,
-      senderAvatar: user.avatar,
+      senderName: user.name || 'Member',
+      senderAvatar: user.avatar || user.profileImage || '',
       text,
       replyTo,
       attachments,
@@ -70,7 +70,7 @@ export const FamilyChatView: React.FC = () => {
     ? chatService.searchMessages(searchQuery)
     : messages;
 
-  const onlineMembersCount = members.filter(m => m.status === 'online').length;
+  const onlineMembersCount = members.length;
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
@@ -78,8 +78,8 @@ export const FamilyChatView: React.FC = () => {
       <div className="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-10 shrink-0">
         <div className="flex items-center gap-3">
           <Avatar
-            src={family.avatar}
-            name={family.name}
+            src={family?.photo || family?.avatar}
+            name={family?.name || 'Family'}
             size="md"
             status="online"
             className="ring-2 ring-indigo-500/20"
@@ -87,7 +87,7 @@ export const FamilyChatView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 leading-tight">
-                {family.name}
+                {family?.name || 'Family'}
               </h2>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
                 Active
@@ -96,7 +96,7 @@ export const FamilyChatView: React.FC = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
               <span>
-                {members.length} members • {onlineMembersCount} {t.chat.online}
+                {members.length} members
               </span>
             </p>
           </div>
@@ -204,15 +204,15 @@ export const FamilyChatView: React.FC = () => {
           <div className="flex-1 overflow-y-auto py-3 space-y-3">
             {members.map(m => (
               <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60">
-                <Avatar src={m.avatar} name={m.name} size="sm" status={m.status} />
+                <Avatar src={m.userPhoto} name={m.userName || 'Member'} size="sm" />
                 <div className="overflow-hidden">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{m.name}</p>
-                    {m.id === user?.id && (
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{m.userName || 'Member'}</p>
+                    {m.userId === user?.id && (
                       <span className="text-[10px] text-indigo-600 font-semibold">(You)</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 capitalize">{m.roleInFamily}</p>
+                  <p className="text-[11px] text-slate-400 capitalize">{m.role}</p>
                 </div>
               </div>
             ))}

@@ -71,6 +71,7 @@ export const INITIAL_FAMILY: Family = {
   avatar: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=400&h=400&q=80',
   createdAt: '2026-01-15T08:00:00.000Z',
   updatedAt: '2026-09-28T09:00:00.000Z',
+  status: 'active',
   settings: {
     allowMemberInvites: true,
     currency: 'USD',

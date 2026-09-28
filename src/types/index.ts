@@ -1,44 +1,73 @@
 /**
  * FamilyHub Core Domain Types & Data Models
- * Designed for production compatibility with Firebase Firestore or PostgreSQL
+ * Real Firebase Firestore & Authentication Architecture
  */
 
 export type Role = 'owner' | 'admin' | 'member';
+export type MembershipStatus = 'active' | 'pending' | 'removed';
 
 export interface User {
-  id: string;
-  name: string;
+  id: string; // Firebase Auth UID
+  name: string; // Display name
+  fullName?: string;
   email: string;
   phone?: string;
-  avatar: string;
-  roleInFamily: Role;
+  avatar?: string;
+  profileImage?: string;
+  roleInFamily?: Role;
   status: 'online' | 'away' | 'offline';
   bio?: string;
   createdAt: string;
+  updatedAt?: string;
+  lastLoginAt?: string;
 }
 
 export interface Family {
   id: string;
   name: string;
-  inviteCode: string;
-  createdBy: string;
+  photo?: string;
   avatar?: string;
+  inviteCode?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+  status: 'active' | 'archived';
   settings?: {
-    allowMemberInvites: boolean;
-    currency: string;
+    allowMemberInvites?: boolean;
+    currency?: string;
     emergencyNumber?: string;
   };
 }
 
-export interface FamilyMembership {
-  id: string;
+export interface FamilyMember {
+  id: string; // Format: `${familyId}_${userId}`
   familyId: string;
   userId: string;
   role: Role;
+  status: MembershipStatus;
   joinedAt: string;
-  status: 'active' | 'invited' | 'suspended';
+  updatedAt?: string;
+  userName?: string;
+  userEmail?: string;
+  userPhoto?: string;
+}
+
+export type FamilyMembership = FamilyMember;
+
+export interface FamilyInvite {
+  id: string;
+  familyId: string;
+  familyName: string;
+  familyPhoto?: string;
+  invitedBy: string;
+  invitedByName?: string;
+  inviteCode: string; // e.g. FAM-8K4P-29XQ
+  email?: string;
+  phone?: string;
+  role: 'admin' | 'member';
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled';
+  expiresAt: string;
+  createdAt: string;
 }
 
 export interface Attachment {
@@ -81,18 +110,31 @@ export interface ChatRoom {
   id: string;
   familyId: string;
   name: string;
+  type: 'family' | 'channel' | 'direct';
   topic?: string;
-  isGeneral: boolean;
+  isGeneral?: boolean;
   createdAt: string;
+  createdBy: string;
+}
+
+export interface ChatMember {
+  id: string;
+  chatRoomId: string;
+  familyId?: string;
+  userId: string;
+  joinedAt: string;
+  status: 'active' | 'left';
 }
 
 export type NotificationType =
+  | 'family_invitation'
+  | 'invitation_accepted'
+  | 'member_joined'
+  | 'member_removed'
   | 'new_message'
   | 'expense_added'
   | 'bill_due'
   | 'medical_update'
-  | 'new_photo'
-  | 'new_note'
   | 'urgent_item'
   | 'family_event'
   | 'system';
@@ -207,7 +249,7 @@ export interface FamilyNote {
 export interface PersonalProfile {
   ownerId: string;
   isLockEnabled: boolean;
-  pinHash?: string; // Simulated secure hash
+  pinHash?: string;
   autoLockMinutes: number;
 }
 

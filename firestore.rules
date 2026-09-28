@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isFamilyMember(familyId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
+        (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active')
+      );
+    }
+
+    function isFamilyAdminOrOwner(familyId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
+        (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role in ['owner', 'admin'] &&
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active')
+      );
+    }
+
+    function isFamilyOwner(familyId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
+        (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role == 'owner')
+      );
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // --- Families Collection ---
+    match /families/{familyId} {
+      allow read: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        isFamilyMember(familyId)
+      );
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      allow delete: if isAuthenticated() && isFamilyOwner(familyId);
+    }
+
+    // --- Family Memberships Collection ---
+    match /familyMembers/{membershipId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        isFamilyAdminOrOwner(request.resource.data.familyId)
+      );
+      allow update: if isAuthenticated() && (
+        (resource.data.userId == request.auth.uid && request.resource.data.status in ['active', 'removed']) ||
+        isFamilyAdminOrOwner(resource.data.familyId)
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyAdminOrOwner(resource.data.familyId)
+      );
+    }
+
+    // --- Family Invitations ---
+    match /familyInvites/{inviteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isFamilyAdminOrOwner(request.resource.data.familyId);
+      allow update: if isAuthenticated() && (
+        request.resource.data.status in ['accepted', 'expired'] ||
+        isFamilyAdminOrOwner(resource.data.familyId)
+      );
+      allow delete: if isAuthenticated() && isFamilyAdminOrOwner(resource.data.familyId);
+    }
+
+    // --- Chat Rooms ---
+    match /chatRooms/{chatRoomId} {
+      allow read: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow create: if isAuthenticated() && (
+        request.resource.data.createdBy == request.auth.uid ||
+        isFamilyMember(request.resource.data.familyId)
+      );
+      allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(resource.data.familyId);
+    }
+
+    // --- Chat Members ---
+    match /chatMembers/{chatMemberId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        isFamilyMember(request.resource.data.familyId)
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyAdminOrOwner(resource.data.familyId)
+      );
+    }
+
+    // --- Notifications ---
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+    }
+
+    // --- Activity Logs ---
+    match /activityLogs/{activityId} {
+      allow read: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow create: if isAuthenticated() && request.resource.data.actorUserId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // --- Strictly Private Personal Records ---
+    match /personalExpenses/{expenseId} {
+      allow read, write: if isAuthenticated() && (
+        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
+        (resource != null && resource.data.ownerId == request.auth.uid)
+      );
+    }
+
+    match /personalNotes/{noteId} {
+      allow read, write: if isAuthenticated() && (
+        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
+        (resource != null && resource.data.ownerId == request.auth.uid)
+      );
+    }
+
+    match /personalTasks/{taskId} {
+      allow read, write: if isAuthenticated() && (
+        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
+        (resource != null && resource.data.ownerId == request.auth.uid)
+      );
+    }
+
+    // --- Test connection document ---
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

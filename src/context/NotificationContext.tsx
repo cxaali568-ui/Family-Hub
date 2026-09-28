@@ -8,8 +8,8 @@ interface NotificationContextType {
   unreadCount: number;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -29,32 +29,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    const refresh = () => {
-      setNotifications(notificationService.getNotifications(userId));
-      setUnreadCount(notificationService.getUnreadCount(userId));
-    };
-
-    refresh();
-    const unsub = notificationService.subscribe(() => {
-      refresh();
+    const unsub = notificationService.subscribeUserNotifications(userId, (notifs) => {
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter(n => !n.readAt).length);
     });
 
     return () => unsub();
   }, [userId]);
 
-  const markAsRead = (id: string) => {
-    notificationService.markAsRead(id);
-    if (userId) {
-      setNotifications(notificationService.getNotifications(userId));
-      setUnreadCount(notificationService.getUnreadCount(userId));
-    }
+  const markAsRead = async (id: string) => {
+    await notificationService.markAsRead(id);
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     if (!userId) return;
-    notificationService.markAllAsRead(userId);
-    setNotifications(notificationService.getNotifications(userId));
-    setUnreadCount(0);
+    await notificationService.markAllAsRead(userId);
   };
 
   return (

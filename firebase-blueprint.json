@@ -1,0 +1,201 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document storing basic account metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string", "description": "Full display name" },
+        "email": { "type": "string", "description": "Primary email" },
+        "phone": { "type": "string", "description": "Optional phone number" },
+        "profileImage": { "type": "string", "description": "Avatar photo URL" },
+        "createdAt": { "type": "string", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Profile update timestamp" },
+        "lastLoginAt": { "type": "string", "description": "Last sign in timestamp" },
+        "status": { "type": "string", "description": "Online presence status", "enum": ["online", "away", "offline"] }
+      },
+      "required": ["id", "fullName", "email", "createdAt"]
+    },
+    "Family": {
+      "title": "Family",
+      "description": "Core family unit document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique family identifier" },
+        "name": { "type": "string", "description": "Name of the family" },
+        "photo": { "type": "string", "description": "Family cover or avatar photo URL" },
+        "createdBy": { "type": "string", "description": "User ID of creator/owner" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" },
+        "status": { "type": "string", "description": "Family space status", "enum": ["active", "archived"] }
+      },
+      "required": ["id", "name", "createdBy", "createdAt"]
+    },
+    "FamilyMember": {
+      "title": "FamilyMember",
+      "description": "Join document linking a user to a family with role permissions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique membership record ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "userId": { "type": "string", "description": "User reference ID" },
+        "role": { "type": "string", "description": "Role in this family", "enum": ["owner", "admin", "member"] },
+        "status": { "type": "string", "description": "Membership status", "enum": ["active", "pending", "removed"] },
+        "joinedAt": { "type": "string", "description": "Timestamp when joined" },
+        "updatedAt": { "type": "string", "description": "Timestamp when role or status changed" }
+      },
+      "required": ["id", "familyId", "userId", "role", "status", "joinedAt"]
+    },
+    "FamilyInvite": {
+      "title": "FamilyInvite",
+      "description": "Invitation record containing an unguessable invitation code",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique invite ID" },
+        "familyId": { "type": "string", "description": "Target family ID" },
+        "familyName": { "type": "string", "description": "Name of the target family" },
+        "invitedBy": { "type": "string", "description": "User ID of the inviter" },
+        "inviteCode": { "type": "string", "description": "Secure unguessable code e.g. FAM-8K4P-29XQ" },
+        "email": { "type": "string", "description": "Optional invited email" },
+        "role": { "type": "string", "description": "Assigned role upon joining", "enum": ["admin", "member"] },
+        "status": { "type": "string", "description": "Invite state", "enum": ["pending", "accepted", "expired", "cancelled"] },
+        "expiresAt": { "type": "string", "description": "Expiration timestamp" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "invitedBy", "inviteCode", "role", "status", "createdAt"]
+    },
+    "ChatRoom": {
+      "title": "ChatRoom",
+      "description": "Chat room within a family",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Chat room ID" },
+        "familyId": { "type": "string", "description": "Associated family ID" },
+        "type": { "type": "string", "description": "Room type", "enum": ["family", "channel", "direct"] },
+        "name": { "type": "string", "description": "Name of the room" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "createdBy": { "type": "string", "description": "User ID of creator" }
+      },
+      "required": ["id", "familyId", "type", "name", "createdAt"]
+    },
+    "ChatMember": {
+      "title": "ChatMember",
+      "description": "Relationship linking user to a chat room",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Membership ID" },
+        "chatRoomId": { "type": "string", "description": "Chat room ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "userId": { "type": "string", "description": "User ID" },
+        "joinedAt": { "type": "string", "description": "Joined timestamp" },
+        "status": { "type": "string", "description": "Membership status", "enum": ["active", "left"] }
+      },
+      "required": ["id", "chatRoomId", "userId", "joinedAt", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app alerts for users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Notification ID" },
+        "recipientUserId": { "type": "string", "description": "Target user ID" },
+        "familyId": { "type": "string", "description": "Optional family ID context" },
+        "type": { "type": "string", "description": "Type of alert" },
+        "title": { "type": "string", "description": "Short headline" },
+        "message": { "type": "string", "description": "Body message" },
+        "relatedEntityType": { "type": "string", "description": "Entity kind" },
+        "relatedEntityId": { "type": "string", "description": "Entity ID" },
+        "createdAt": { "type": "string", "description": "Timestamp" },
+        "readAt": { "type": "string", "description": "Read timestamp or null" }
+      },
+      "required": ["id", "recipientUserId", "type", "title", "message", "createdAt"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Audit trail of household actions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Activity log ID" },
+        "familyId": { "type": "string", "description": "Target family ID" },
+        "actorUserId": { "type": "string", "description": "Actor user ID" },
+        "actorName": { "type": "string", "description": "Actor display name" },
+        "action": { "type": "string", "description": "Action performed" },
+        "entityType": { "type": "string", "description": "Entity affected" },
+        "entityId": { "type": "string", "description": "Entity ID" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "familyId", "actorUserId", "actorName", "action", "entityType", "createdAt"]
+    },
+    "PersonalExpense": {
+      "title": "PersonalExpense",
+      "description": "Private expense belonging strictly to ownerId",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Expense ID" },
+        "ownerId": { "type": "string", "description": "Owner user ID" },
+        "title": { "type": "string", "description": "Description" },
+        "amount": { "type": "number", "description": "Amount in currency" },
+        "category": { "type": "string", "description": "Category" },
+        "date": { "type": "string", "description": "Date" }
+      },
+      "required": ["id", "ownerId", "title", "amount", "date"]
+    },
+    "PersonalNote": {
+      "title": "PersonalNote",
+      "description": "Private journal or note belonging strictly to ownerId",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Note ID" },
+        "ownerId": { "type": "string", "description": "Owner user ID" },
+        "title": { "type": "string", "description": "Note title" },
+        "content": { "type": "string", "description": "Note content" },
+        "category": { "type": "string", "description": "Category" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      },
+      "required": ["id", "ownerId", "title", "content", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account profiles"
+    },
+    "/families/{familyId}": {
+      "schema": "Family",
+      "description": "Family collection storing household metadata"
+    },
+    "/familyMembers/{membershipId}": {
+      "schema": "FamilyMember",
+      "description": "Family memberships linking users to families with roles"
+    },
+    "/familyInvites/{inviteId}": {
+      "schema": "FamilyInvite",
+      "description": "Unguessable invitation codes to join families"
+    },
+    "/chatRooms/{chatRoomId}": {
+      "schema": "ChatRoom",
+      "description": "Chat rooms created for families"
+    },
+    "/chatMembers/{chatMemberId}": {
+      "schema": "ChatMember",
+      "description": "Members belonging to chat rooms"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Private in-app notifications for users"
+    },
+    "/activityLogs/{activityId}": {
+      "schema": "ActivityLog",
+      "description": "Family activity feed"
+    },
+    "/personalExpenses/{expenseId}": {
+      "schema": "PersonalExpense",
+      "description": "Confidential personal expenses"
+    },
+    "/personalNotes/{noteId}": {
+      "schema": "PersonalNote",
+      "description": "Confidential private notes"
+    }
+  }
+}

@@ -24,13 +24,12 @@ interface PersonalContextType {
   tasks: PersonalTask[];
   notes: PersonalNote[];
   aiMessages: AIMessage[];
-  addExpense: (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => void;
-  deleteExpense: (id: string) => void;
-  addTask: (task: Omit<PersonalTask, 'id' | 'ownerId'>) => void;
-  toggleTask: (id: string) => void;
-  addNote: (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => void;
+  addExpense: (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+  addTask: (task: Omit<PersonalTask, 'id' | 'ownerId'>) => Promise<void>;
+  toggleTask: (id: string, currentCompleted: boolean) => Promise<void>;
+  addNote: (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => Promise<void>;
   addAIMessage: (msg: Omit<AIMessage, 'id' | 'timestamp'>) => void;
-  refreshPersonalData: () => void;
 }
 
 const PersonalContext = createContext<PersonalContextType | undefined>(undefined);
@@ -64,17 +63,18 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProfile(p);
     // If lock is not enabled for this user, they are automatically unlocked
     setIsUnlockedInSession(!p.isLockEnabled);
-    refreshPersonalData();
-  }, [ownerId]);
 
-  const refreshPersonalData = () => {
-    if (!ownerId) return;
-    setExpenses(personalService.getExpenses(ownerId));
-    setTasks(personalService.getTasks(ownerId));
-    setNotes(personalService.getNotes(ownerId));
-    setAiMessages(personalService.getAIMessages(ownerId));
-    setProfile(personalService.getProfile(ownerId));
-  };
+    // Real-time Firestore subscriptions strictly filtered by ownerId
+    const unsubExpenses = personalService.subscribeExpenses(ownerId, setExpenses);
+    const unsubTasks = personalService.subscribeTasks(ownerId, setTasks);
+    const unsubNotes = personalService.subscribeNotes(ownerId, setNotes);
+
+    return () => {
+      unsubExpenses();
+      unsubTasks();
+      unsubNotes();
+    };
+  }, [ownerId]);
 
   const isLocked = Boolean(profile?.isLockEnabled && !isUnlockedInSession);
 
@@ -95,50 +95,48 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const enableLock = (pin: string) => {
     if (!ownerId) return;
     personalService.setLockEnabled(ownerId, true, pin);
-    refreshPersonalData();
+    setProfile(personalService.getProfile(ownerId));
   };
 
   const disableLock = () => {
     if (!ownerId) return;
     personalService.setLockEnabled(ownerId, false);
     setIsUnlockedInSession(true);
-    refreshPersonalData();
+    setProfile(personalService.getProfile(ownerId));
   };
 
-  const addExpense = (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => {
+  const addExpense = async (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => {
     if (!ownerId) return;
-    personalService.addExpense(ownerId, expense);
-    refreshPersonalData();
+    await personalService.addExpense(ownerId, expense);
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
     if (!ownerId) return;
-    personalService.deleteExpense(ownerId, id);
-    refreshPersonalData();
+    await personalService.deleteExpense(ownerId, id);
   };
 
-  const addTask = (task: Omit<PersonalTask, 'id' | 'ownerId'>) => {
+  const addTask = async (task: Omit<PersonalTask, 'id' | 'ownerId'>) => {
     if (!ownerId) return;
-    personalService.addTask(ownerId, task);
-    refreshPersonalData();
+    await personalService.addTask(ownerId, task);
   };
 
-  const toggleTask = (id: string) => {
+  const toggleTask = async (id: string, currentCompleted: boolean) => {
     if (!ownerId) return;
-    personalService.toggleTaskCompleted(ownerId, id);
-    refreshPersonalData();
+    await personalService.toggleTask(ownerId, id, !currentCompleted);
   };
 
-  const addNote = (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => {
+  const addNote = async (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => {
     if (!ownerId) return;
-    personalService.addNote(ownerId, note);
-    refreshPersonalData();
+    await personalService.addNote(ownerId, note);
   };
 
   const addAIMessage = (msg: Omit<AIMessage, 'id' | 'timestamp'>) => {
-    if (!ownerId) return;
-    personalService.addAIMessage(ownerId, msg);
-    refreshPersonalData();
+    const newMsg: AIMessage = {
+      id: `ai-${Date.now()}`,
+      ...msg,
+      timestamp: new Date().toISOString(),
+    };
+    setAiMessages(prev => [...prev, newMsg]);
   };
 
   return (
@@ -163,7 +161,6 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleTask,
         addNote,
         addAIMessage,
-        refreshPersonalData,
       }}
     >
       {children}

@@ -1,81 +1,91 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Role } from '../types';
+import { User } from '../types';
 import { authService } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  demoUsers: User[];
-  switchUser: (userId: string) => void;
-  login: (emailOrPhone: string, password: string) => Promise<User>;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<User>;
   register: (params: {
     fullName: string;
-    emailOrPhone: string;
+    email: string;
     password: string;
-    role?: Role;
-    avatar?: string;
+    phone?: string;
+    profileImage?: string;
   }) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => authService.getCurrentUser());
-  const [demoUsers, setDemoUsers] = useState<User[]>(() => authService.getAllDemoUsers());
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const switchUser = (userId: string) => {
-    const updated = authService.switchUser(userId);
-    if (updated) {
-      setUser(updated);
+  useEffect(() => {
+    // Real-time Firebase Authentication listener
+    const unsubscribe = authService.onAuthStateChanged((authUser, authLoading) => {
+      setUser(authUser);
+      setLoading(authLoading);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string): Promise<User> => {
+    setLoading(true);
+    try {
+      const u = await authService.login(email, password);
+      setUser(u);
+      return u;
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const login = async (emailOrPhone: string, password: string): Promise<User> => {
-    const u = await authService.login(emailOrPhone, password);
-    setUser(u);
-    setDemoUsers(authService.getAllDemoUsers());
-    return u;
   };
 
   const register = async (params: {
     fullName: string;
-    emailOrPhone: string;
+    email: string;
     password: string;
-    role?: Role;
-    avatar?: string;
+    phone?: string;
+    profileImage?: string;
   }): Promise<User> => {
-    const u = await authService.register({
-      fullName: params.fullName,
-      emailOrPhone: params.emailOrPhone,
-      passwordPlaintext: params.password,
-      role: params.role,
-      avatar: params.avatar,
-    });
-    setUser(u);
-    setDemoUsers(authService.getAllDemoUsers());
-    return u;
+    setLoading(true);
+    try {
+      const u = await authService.register(params);
+      setUser(u);
+      return u;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  const logout = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      await authService.logout();
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    setUser(authService.getCurrentUser());
-  }, []);
+  const forgotPassword = async (email: string): Promise<void> => {
+    await authService.forgotPassword(email);
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
-        demoUsers,
-        switchUser,
+        loading,
         login,
         register,
         logout,
+        forgotPassword,
       }}
     >
       {children}

@@ -22,6 +22,7 @@ export const SettingsView: React.FC = () => {
   const [pinSaved, setPinSaved] = useState(false);
 
   const handleCopyCode = () => {
+    if (!family?.inviteCode) return;
     navigator.clipboard.writeText(family.inviteCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
@@ -168,62 +169,66 @@ export const SettingsView: React.FC = () => {
           </div>
         </Card>
 
-        {/* Family Management & Invite Code */}
-        <Card className="space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                {family.name}
-              </h3>
-              <p className="text-xs text-slate-400">{family.settings?.currency} • Family ID: {family.id.slice(0, 12)}</p>
-            </div>
-          </div>
+          {/* Family Management & Invite Code */}
+          {family && (
+            <Card className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {family.name}
+                  </h3>
+                  <p className="text-xs text-slate-400">{family.settings?.currency || 'USD'} • Family ID: {family.id.slice(0, 12)}</p>
+                </div>
+              </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase">
-                {t.settings.familyInviteCode}
-              </p>
-              <p className="text-base font-mono font-extrabold text-indigo-600 dark:text-indigo-400 tracking-wider">
-                {family.inviteCode}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyCode}
-              className="text-xs"
-              icon={copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            >
-              {copiedCode ? t.settings.copied : t.settings.copyCode}
-            </Button>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase">
+                    {t.settings.familyInviteCode}
+                  </p>
+                  <p className="text-base font-mono font-extrabold text-indigo-600 dark:text-indigo-400 tracking-wider">
+                    {family.inviteCode || 'N/A'}
+                  </p>
+                </div>
+                {family.inviteCode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyCode}
+                    className="text-xs"
+                    icon={copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  >
+                    {copiedCode ? t.settings.copied : t.settings.copyCode}
+                  </Button>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Account Info and Logout */}
+        <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              Logged in as {user?.name}
+            </h4>
+            <p className="text-xs text-slate-400">
+              {user?.email} • Role: {(user?.roleInFamily || 'Member').toUpperCase()}
+            </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            icon={<LogOut className="w-4 h-4 text-rose-500" />}
+            className="text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/40"
+          >
+            {t.auth.logout}
+          </Button>
         </Card>
       </div>
-
-      {/* Account Info and Logout */}
-      <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            Logged in as {user?.name}
-          </h4>
-          <p className="text-xs text-slate-400">
-            {user?.email} • Role: {user?.roleInFamily.toUpperCase()}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={logout}
-          icon={<LogOut className="w-4 h-4 text-rose-500" />}
-          className="text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/40"
-        >
-          {t.auth.logout}
-        </Button>
-      </Card>
-    </div>
-  );
-};
+    );
+  };

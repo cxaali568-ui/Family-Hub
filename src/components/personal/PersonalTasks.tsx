@@ -85,7 +85,7 @@ export const PersonalTasks: React.FC = () => {
             >
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => toggleTask(task.id)}
+                  onClick={() => toggleTask(task.id, task.completed)}
                   className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
                     task.completed
                       ? 'bg-indigo-600 border-indigo-600 text-white'

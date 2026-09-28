@@ -1,64 +1,51 @@
 import {
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  deleteDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import {
   PersonalProfile,
   PersonalExpense,
   PersonalTask,
   PersonalNote,
   AIMessage,
 } from '../types';
-import {
-  INITIAL_PERSONAL_EXPENSES,
-  INITIAL_PERSONAL_TASKS,
-  INITIAL_PERSONAL_NOTES,
-} from './mockData';
 
 class PersonalService {
-  // Keyed strictly by ownerId
-  private profiles: Record<string, PersonalProfile> = {
-    'user-tariq': {
-      ownerId: 'user-tariq',
-      isLockEnabled: true,
-      pinHash: '1234', // In production, salted hash
-      autoLockMinutes: 15,
-    },
-    'user-ayesha': {
-      ownerId: 'user-ayesha',
+  /**
+   * Retrieves personal lock settings from secure local storage partitioned by ownerId
+   */
+  getProfile(ownerId: string): PersonalProfile {
+    const key = `familyhub_lock_${ownerId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        // Fallback
+      }
+    }
+    return {
+      ownerId,
       isLockEnabled: false,
       pinHash: '1234',
-      autoLockMinutes: 30,
-    },
-  };
-
-  private expenses: PersonalExpense[] = [...INITIAL_PERSONAL_EXPENSES];
-  private tasks: PersonalTask[] = [...INITIAL_PERSONAL_TASKS];
-  private notes: PersonalNote[] = [...INITIAL_PERSONAL_NOTES];
-  private aiChatHistory: Record<string, AIMessage[]> = {
-    'user-tariq': [
-      {
-        id: 'ai-init-1',
-        role: 'model',
-        text: "Hello Tariq! I am your private AI Assistant. How can I help you organize your week, manage private budgets, or brainstorm ideas?",
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  };
-
-  getProfile(ownerId: string): PersonalProfile {
-    if (!this.profiles[ownerId]) {
-      this.profiles[ownerId] = {
-        ownerId,
-        isLockEnabled: false,
-        pinHash: '1234',
-        autoLockMinutes: 15,
-      };
-    }
-    return { ...this.profiles[ownerId] };
+      autoLockMinutes: 15,
+    };
   }
 
   setLockEnabled(ownerId: string, enabled: boolean, pin?: string): void {
-    const prof = this.getProfile(ownerId);
-    prof.isLockEnabled = enabled;
-    if (pin) prof.pinHash = pin;
-    this.profiles[ownerId] = prof;
+    const current = this.getProfile(ownerId);
+    current.isLockEnabled = enabled;
+    if (pin) current.pinHash = pin;
+    localStorage.setItem(`familyhub_lock_${ownerId}`, JSON.stringify(current));
   }
 
   verifyPin(ownerId: string, pin: string): boolean {
@@ -67,89 +54,125 @@ class PersonalService {
     return prof.pinHash === pin || pin === '1234';
   }
 
-  // Personal Expenses - STRICTLY filtered by ownerId
-  getExpenses(ownerId: string): PersonalExpense[] {
-    return this.expenses.filter(e => e.ownerId === ownerId);
+  // --- Personal Expenses (Strictly Firestore ownerId partition) ---
+  subscribeExpenses(ownerId: string, callback: (expenses: PersonalExpense[]) => void): () => void {
+    if (!ownerId) {
+      callback([]);
+      return () => {};
+    }
+
+    const q = query(
+      collection(db, 'personalExpenses'),
+      where('ownerId', '==', ownerId),
+      orderBy('date', 'desc')
+    );
+
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: PersonalExpense[] = [];
+        snap.forEach(d => list.push(d.data() as PersonalExpense));
+        callback(list);
+      },
+      (err) => {
+        console.warn("Error listening to personal expenses:", err);
+      }
+    );
   }
 
-  addExpense(ownerId: string, expense: Omit<PersonalExpense, 'id' | 'ownerId'>): PersonalExpense {
-    const newExp: PersonalExpense = {
-      id: `pexp-${Date.now()}`,
+  async addExpense(ownerId: string, expense: Omit<PersonalExpense, 'id' | 'ownerId'>): Promise<PersonalExpense> {
+    const docRef = doc(collection(db, 'personalExpenses'));
+    const item: PersonalExpense = {
+      id: docRef.id,
       ownerId,
       ...expense,
     };
-    this.expenses.unshift(newExp);
-    return newExp;
+    await setDoc(docRef, item);
+    return item;
   }
 
-  deleteExpense(ownerId: string, id: string): void {
-    this.expenses = this.expenses.filter(e => !(e.id === id && e.ownerId === ownerId));
+  async deleteExpense(ownerId: string, id: string): Promise<void> {
+    await deleteDoc(doc(db, 'personalExpenses', id));
   }
 
-  // Personal Tasks - STRICTLY filtered by ownerId
-  getTasks(ownerId: string): PersonalTask[] {
-    return this.tasks.filter(t => t.ownerId === ownerId);
+  // --- Personal Tasks (Strictly Firestore ownerId partition) ---
+  subscribeTasks(ownerId: string, callback: (tasks: PersonalTask[]) => void): () => void {
+    if (!ownerId) {
+      callback([]);
+      return () => {};
+    }
+
+    const q = query(
+      collection(db, 'personalTasks'),
+      where('ownerId', '==', ownerId)
+    );
+
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: PersonalTask[] = [];
+        snap.forEach(d => list.push(d.data() as PersonalTask));
+        callback(list);
+      },
+      (err) => {
+        console.warn("Error listening to personal tasks:", err);
+      }
+    );
   }
 
-  addTask(ownerId: string, task: Omit<PersonalTask, 'id' | 'ownerId'>): PersonalTask {
-    const newTask: PersonalTask = {
-      id: `ptask-${Date.now()}`,
+  async addTask(ownerId: string, task: Omit<PersonalTask, 'id' | 'ownerId'>): Promise<PersonalTask> {
+    const docRef = doc(collection(db, 'personalTasks'));
+    const item: PersonalTask = {
+      id: docRef.id,
       ownerId,
       ...task,
     };
-    this.tasks.unshift(newTask);
-    return newTask;
+    await setDoc(docRef, item);
+    return item;
   }
 
-  toggleTaskCompleted(ownerId: string, taskId: string): void {
-    const task = this.tasks.find(t => t.id === taskId && t.ownerId === ownerId);
-    if (task) {
-      task.completed = !task.completed;
+  async toggleTask(ownerId: string, taskId: string, completed: boolean): Promise<void> {
+    await updateDoc(doc(db, 'personalTasks', taskId), {
+      completed,
+    });
+  }
+
+  // --- Personal Notes (Strictly Firestore ownerId partition) ---
+  subscribeNotes(ownerId: string, callback: (notes: PersonalNote[]) => void): () => void {
+    if (!ownerId) {
+      callback([]);
+      return () => {};
     }
+
+    const q = query(
+      collection(db, 'personalNotes'),
+      where('ownerId', '==', ownerId),
+      orderBy('updatedAt', 'desc')
+    );
+
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: PersonalNote[] = [];
+        snap.forEach(d => list.push(d.data() as PersonalNote));
+        callback(list);
+      },
+      (err) => {
+        console.warn("Error listening to personal notes:", err);
+      }
+    );
   }
 
-  // Personal Notes - STRICTLY filtered by ownerId
-  getNotes(ownerId: string): PersonalNote[] {
-    return this.notes.filter(n => n.ownerId === ownerId);
-  }
-
-  addNote(ownerId: string, note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>): PersonalNote {
-    const newNote: PersonalNote = {
-      id: `pnote-${Date.now()}`,
+  async addNote(ownerId: string, note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>): Promise<PersonalNote> {
+    const docRef = doc(collection(db, 'personalNotes'));
+    const item: PersonalNote = {
+      id: docRef.id,
       ownerId,
       ...note,
       updatedAt: new Date().toISOString(),
     };
-    this.notes.unshift(newNote);
-    return newNote;
-  }
-
-  // AI Chat History - Strictly isolated by ownerId
-  getAIMessages(ownerId: string): AIMessage[] {
-    if (!this.aiChatHistory[ownerId]) {
-      this.aiChatHistory[ownerId] = [
-        {
-          id: `ai-wel-${Date.now()}`,
-          role: 'model',
-          text: "Welcome to your confidential AI Assistant. Ask me anything about work, studies, private budgeting, or meal prep.",
-          timestamp: new Date().toISOString(),
-        },
-      ];
-    }
-    return [...this.aiChatHistory[ownerId]];
-  }
-
-  addAIMessage(ownerId: string, message: Omit<AIMessage, 'id' | 'timestamp'>): AIMessage {
-    const newMsg: AIMessage = {
-      id: `ai-${Date.now()}`,
-      ...message,
-      timestamp: new Date().toISOString(),
-    };
-    if (!this.aiChatHistory[ownerId]) {
-      this.aiChatHistory[ownerId] = [];
-    }
-    this.aiChatHistory[ownerId].push(newMsg);
-    return newMsg;
+    await setDoc(docRef, item);
+    return item;
   }
 }
 

@@ -1,9 +1,10 @@
 /**
  * FamilyHub - Modern, Mobile-First Family + Personal Management System
+ * Real Firebase Backend & Multi-Family Architecture
  * @license Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -13,6 +14,7 @@ import { NotificationProvider } from './context/NotificationContext';
 
 import { AppShell } from './components/layout/AppShell';
 import { AuthView } from './components/auth/AuthView';
+import { OnboardingView } from './components/family/OnboardingView';
 import { FamilyChatView } from './components/chat/FamilyChatView';
 import { FamilyMembersView } from './components/family/FamilyMembersView';
 import { FamilyMoneyView } from './components/family/FamilyMoneyView';
@@ -23,6 +25,7 @@ import { FamilyUrgentView } from './components/family/FamilyUrgentView';
 import { FamilyPhotosDocsView } from './components/family/FamilyPhotosDocsView';
 import { PersonalSpaceView } from './components/personal/PersonalSpaceView';
 import { SettingsView } from './components/settings/SettingsView';
+import { LoadingState } from './components/ui/LoadingState';
 
 const MainContent: React.FC = () => {
   const { currentRoute } = useFamily();
@@ -56,8 +59,44 @@ const MainContent: React.FC = () => {
   }
 };
 
+const AuthenticatedFamilyRouter: React.FC = () => {
+  const { loadingFamilies, hasNoFamily, currentFamily } = useFamily();
+  const [forceOnboarding, setForceOnboarding] = useState(false);
+
+  if (loadingFamilies) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <LoadingState message="Connecting to your Family Space..." />
+      </div>
+    );
+  }
+
+  // If user has zero active family memberships or requested to join/create another family
+  if (hasNoFamily || forceOnboarding || !currentFamily) {
+    return <OnboardingView />;
+  }
+
+  return (
+    <PersonalProvider>
+      <NotificationProvider>
+        <AppShell onOpenOnboarding={() => setForceOnboarding(true)}>
+          <MainContent />
+        </AppShell>
+      </NotificationProvider>
+    </PersonalProvider>
+  );
+};
+
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <LoadingState message="Loading FamilyHub..." />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <AuthView />;
@@ -65,13 +104,7 @@ const AppContent: React.FC = () => {
 
   return (
     <FamilyProvider>
-      <PersonalProvider>
-        <NotificationProvider>
-          <AppShell>
-            <MainContent />
-          </AppShell>
-        </NotificationProvider>
-      </PersonalProvider>
+      <AuthenticatedFamilyRouter />
     </FamilyProvider>
   );
 };

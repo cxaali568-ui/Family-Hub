@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Personal user files: strictly readable & writable only by owner
+    match /users/{userId}/personal/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // User profile images
+    match /users/{userId}/avatar {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+
+    // Family shared files: readable and writable by authenticated family members
+    match /families/{familyId}/{allPaths=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

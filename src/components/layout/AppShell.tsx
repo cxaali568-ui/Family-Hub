@@ -21,29 +21,45 @@ import {
   Settings,
   Menu,
   X,
-  ChevronRight,
-  Shield,
+  ChevronDown,
+  Plus,
+  Home,
   LogOut,
+  Check,
 } from 'lucide-react';
 import { FamilyNavRoute } from '../../types';
 
 interface AppShellProps {
   children: React.ReactNode;
+  onOpenOnboarding?: () => void;
 }
 
-export const AppShell: React.FC<AppShellProps> = ({ children }) => {
-  const { user, switchUser, demoUsers, logout } = useAuth();
-  const { family, currentRoute, setCurrentRoute, urgentItems } = useFamily();
-  const { isLocked } = usePersonal();
+export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }) => {
+  const { user, logout } = useAuth();
+  const {
+    currentFamily,
+    userFamilies,
+    switchFamily,
+    currentRoute,
+    setCurrentRoute,
+    urgentItems,
+  } = useFamily();
   const { unreadCount, setIsOpen: setNotificationOpen } = useNotifications();
-  const { t, isRtl } = useLanguage();
+  const { t } = useLanguage();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
 
   // Exact navigation order specified in requirements:
   // 1. Chat, 2. Family, 3. Money, 4. Medical, 5. Plans, 6. Photos, 7. Documents, 8. Notes, 9. Urgent, 10. Notifications, 11. My Personal, 12. Settings
-  const navItems: { id: FamilyNavRoute; label: string; icon: React.ReactNode; badge?: number | string; isPersonal?: boolean; isUrgent?: boolean }[] = [
+  const navItems: {
+    id: FamilyNavRoute;
+    label: string;
+    icon: React.ReactNode;
+    badge?: number | string;
+    isPersonal?: boolean;
+    isUrgent?: boolean;
+  }[] = [
     { id: 'chat', label: t.nav.chat, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'family', label: t.nav.family, icon: <Users className="w-4 h-4" /> },
     { id: 'money', label: t.nav.money, icon: <DollarSign className="w-4 h-4" /> },
@@ -87,36 +103,75 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">
       {/* ---------------- Desktop Sidebar ---------------- */}
       <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shrink-0 z-20">
-        {/* Family Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <Avatar
-              src={family.avatar}
-              name={family.name}
-              size="md"
-              status="online"
-              className="ring-2 ring-indigo-500/20 shrink-0"
-            />
-            <div className="overflow-hidden">
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                {family.name}
-              </h2>
-              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded">
-                FamilyHub
-              </span>
-            </div>
-          </div>
-
+        {/* Family Switcher Header */}
+        <div className="relative p-3.5 border-b border-slate-100 dark:border-slate-800">
           <button
-            onClick={() => setNotificationOpen(true)}
-            className="relative p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-            title="Notifications"
+            onClick={() => setFamilyDropdownOpen(!familyDropdownOpen)}
+            className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors text-left group"
           >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
-            )}
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <Avatar
+                src={currentFamily?.photo || currentFamily?.avatar}
+                name={currentFamily?.name || 'Family'}
+                size="md"
+                className="ring-2 ring-indigo-500/20 shrink-0"
+              />
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1">
+                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 transition-colors">
+                    {currentFamily?.name || 'My Family'}
+                  </h2>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
+                  <Home className="w-3 h-3 text-indigo-500 shrink-0" />
+                  <span>Switch Family</span>
+                </p>
+              </div>
+            </div>
+            <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 shrink-0 transition-transform" />
           </button>
+
+          {/* Family Switcher Dropdown */}
+          {familyDropdownOpen && (
+            <div className="absolute top-16 left-3 right-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 z-30 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+              <p className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">
+                Your Families ({userFamilies.length})
+              </p>
+              {userFamilies.map(f => (
+                <button
+                  key={f.family.id}
+                  onClick={() => {
+                    switchFamily(f.family.id);
+                    setFamilyDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors ${
+                    f.family.id === currentFamily?.id
+                      ? 'bg-indigo-50 dark:bg-indigo-950/80 font-bold text-indigo-700 dark:text-indigo-300'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Avatar src={f.family.photo || f.family.avatar} name={f.family.name} size="xs" />
+                    <span className="truncate">{f.family.name}</span>
+                  </div>
+                  {f.family.id === currentFamily?.id && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                </button>
+              ))}
+
+              <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  onClick={() => {
+                    setFamilyDropdownOpen(false);
+                    if (onOpenOnboarding) onOpenOnboarding();
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Join or Create Family</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation List in exact 1-12 order */}
@@ -160,62 +215,26 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           })}
         </nav>
 
-        {/* User Switcher / Profile Footer */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60">
-          <div className="relative">
-            <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <Avatar src={user?.avatar} name={user?.name || 'User'} size="sm" status={user?.status} />
-                <div className="overflow-hidden">
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                    {user?.name}
-                  </p>
-                  <p className="text-[10px] text-slate-400 capitalize">
-                    {user?.roleInFamily} • Switch
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </button>
-
-            {/* Switcher Dropdown */}
-            {userDropdownOpen && (
-              <div className="absolute bottom-14 left-0 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 z-30 space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">
-                  Switch Demo Member
-                </p>
-                {demoUsers.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      switchUser(u.id);
-                      setUserDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs transition-colors ${
-                      u.id === user?.id
-                        ? 'bg-indigo-50 dark:bg-indigo-950 font-bold text-indigo-700 dark:text-indigo-300'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <Avatar src={u.avatar} name={u.name} size="xs" />
-                    <span className="truncate">{u.name}</span>
-                  </button>
-                ))}
-                <div className="pt-1 mt-1 border-t border-slate-100 dark:border-slate-700">
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>{t.auth.logout}</span>
-                  </button>
-                </div>
-              </div>
-            )}
+        {/* User Profile & Sign Out Footer */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" status="online" />
+            <div className="overflow-hidden">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                {user?.name}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                {user?.email}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={logout}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </aside>
 
@@ -231,13 +250,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
-              <Avatar src={family.avatar} name={family.name} size="sm" />
+              <Avatar src={currentFamily?.photo || currentFamily?.avatar} name={currentFamily?.name || 'Family'} size="sm" />
               <div>
-                <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                  {family.name}
+                <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate max-w-[150px]">
+                  {currentFamily?.name || 'FamilyHub'}
                 </h1>
                 <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
-                  FamilyHub
+                  Family Space
                 </p>
               </div>
             </div>
@@ -253,7 +272,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
               )}
             </button>
-            <Avatar src={user?.avatar} name={user?.name || 'User'} size="sm" />
+            <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" />
           </div>
         </header>
 
@@ -263,7 +282,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         </main>
 
         {/* ---------------- Mobile Bottom Navigation ---------------- */}
-        {/* Keeps Chat first and easily accessible */}
+        {/* Chat-first principle: Chat is permanently on the left thumb reach */}
         <nav className="lg:hidden flex items-center justify-around bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-2 py-1.5 z-20 shrink-0">
           <button
             onClick={() => setCurrentRoute('chat')}
@@ -334,9 +353,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <div className="relative w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Avatar src={family.avatar} name={family.name} size="sm" />
-                <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
-                  {family.name}
+                <Avatar src={currentFamily?.photo || currentFamily?.avatar} name={currentFamily?.name || 'Family'} size="sm" />
+                <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm truncate">
+                  {currentFamily?.name || 'FamilyHub'}
                 </h3>
               </div>
               <button
@@ -346,6 +365,32 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Mobile Family Switcher */}
+            {userFamilies.length > 1 && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Switch Family:</p>
+                <div className="space-y-1">
+                  {userFamilies.map(f => (
+                    <button
+                      key={f.family.id}
+                      onClick={() => {
+                        switchFamily(f.family.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between p-2 rounded-lg text-xs ${
+                        f.family.id === currentFamily?.id
+                          ? 'bg-indigo-600 text-white font-bold'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="truncate">{f.family.name}</span>
+                      {f.family.id === currentFamily?.id && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <nav className="flex-1 overflow-y-auto p-3 space-y-1">
               {navItems.map(item => (
@@ -373,32 +418,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               ))}
             </nav>
 
-            {/* Mobile User Profile & Switcher */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-              <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Switch Member:</p>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {demoUsers.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      switchUser(u.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`flex items-center gap-1.5 p-1.5 rounded-lg text-[11px] truncate ${
-                      u.id === user?.id
-                        ? 'bg-indigo-600 text-white font-bold'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <Avatar src={u.avatar} name={u.name} size="xs" />
-                    <span className="truncate">{u.name.split(' ')[0]}</span>
-                  </button>
-                ))}
-              </div>
-
               <button
                 onClick={logout}
-                className="w-full py-2 text-xs font-semibold text-rose-600 flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40"
+                className="w-full py-2.5 text-xs font-semibold text-rose-600 flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>{t.auth.logout}</span>

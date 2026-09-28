@@ -1,92 +1,230 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { User, Role } from '../types';
-import { INITIAL_USERS } from './mockData';
-
-const AUTH_USER_KEY = 'familyhub_auth_user_id';
 
 class AuthService {
-  private users: User[] = [...INITIAL_USERS];
-  private currentUserId: string = 'user-tariq'; // Default demo user
-
-  constructor() {
-    const saved = localStorage.getItem(AUTH_USER_KEY);
-    if (saved && this.users.some(u => u.id === saved)) {
-      this.currentUserId = saved;
+  /**
+   * Translates Firebase error codes to user-friendly messages
+   */
+  private formatAuthError(error: any): string {
+    const code = error?.code || '';
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Unable to sign in. Please check your credentials.';
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Please sign in instead.';
+      case 'auth/weak-password':
+        return 'Password is too weak. Please use at least 8 characters.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please wait a moment and try again.';
+      default:
+        return error?.message || 'An unexpected authentication error occurred.';
     }
   }
 
-  getCurrentUser(): User | null {
-    return this.users.find(u => u.id === this.currentUserId) || null;
-  }
-
-  getAllDemoUsers(): User[] {
-    return [...this.users];
-  }
-
-  switchUser(userId: string): User | null {
-    const found = this.users.find(u => u.id === userId);
-    if (found) {
-      this.currentUserId = userId;
-      localStorage.setItem(AUTH_USER_KEY, userId);
-      return found;
-    }
-    return null;
-  }
-
-  async login(emailOrPhone: string, _passwordPlaintext: string): Promise<User> {
-    // In production, this calls the secure backend / Firebase Auth
-    // Password is treated securely and never stored plain in frontend state
-    const normalized = emailOrPhone.trim().toLowerCase();
-    const user = this.users.find(
-      u => u.email.toLowerCase() === normalized || (u.phone && u.phone.includes(normalized))
-    );
-    if (user) {
-      this.currentUserId = user.id;
-      localStorage.setItem(AUTH_USER_KEY, user.id);
-      return user;
-    }
-
-    // If new credentials in demo, create a new authenticated session
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: emailOrPhone.split('@')[0] || 'Family Member',
-      email: normalized.includes('@') ? normalized : `${normalized}@familyhub.local`,
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80',
-      roleInFamily: 'member',
-      status: 'online',
-      createdAt: new Date().toISOString(),
-    };
-    this.users.push(newUser);
-    this.currentUserId = newUser.id;
-    localStorage.setItem(AUTH_USER_KEY, newUser.id);
-    return newUser;
-  }
-
+  /**
+   * Registers a new user with real Firebase Authentication and creates a user profile document in Firestore
+   */
   async register(params: {
     fullName: string;
-    emailOrPhone: string;
-    passwordPlaintext: string;
-    role?: Role;
-    avatar?: string;
+    email: string;
+    password: string;
+    phone?: string;
+    profileImage?: string;
   }): Promise<User> {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: params.fullName.trim(),
-      email: params.emailOrPhone.includes('@') ? params.emailOrPhone : `${params.emailOrPhone}@familyhub.local`,
-      phone: !params.emailOrPhone.includes('@') ? params.emailOrPhone : undefined,
-      avatar: params.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80',
-      roleInFamily: params.role || 'member',
-      status: 'online',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        params.email.trim(),
+        params.password
+      );
 
-    this.users.push(newUser);
-    this.currentUserId = newUser.id;
-    localStorage.setItem(AUTH_USER_KEY, newUser.id);
-    return newUser;
+      const fbUser = userCredential.user;
+
+      // Update Firebase Auth profile
+      await updateProfile(fbUser, {
+        displayName: params.fullName.trim(),
+        photoURL: params.profileImage || undefined,
+      });
+
+      const now = new Date().toISOString();
+
+      // Create User Profile in Firestore: users/{userId}
+      const userProfile: User = {
+        id: fbUser.uid,
+        name: params.fullName.trim(),
+        fullName: params.fullName.trim(),
+        email: fbUser.email || params.email.trim(),
+        phone: params.phone?.trim() || undefined,
+        profileImage: params.profileImage || undefined,
+        avatar: params.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(params.fullName.trim())}`,
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
+        status: 'online',
+      };
+
+      await setDoc(doc(db, 'users', fbUser.uid), userProfile);
+
+      return userProfile;
+    } catch (error: any) {
+      throw new Error(this.formatAuthError(error));
+    }
   }
 
-  logout(): void {
-    localStorage.removeItem(AUTH_USER_KEY);
+  /**
+   * Signs in user with real Firebase Auth and updates lastLoginAt
+   */
+  async login(email: string, password: string): Promise<User> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      const fbUser = userCredential.user;
+      const userDocRef = doc(db, 'users', fbUser.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      const now = new Date().toISOString();
+
+      if (userSnap.exists()) {
+        await updateDoc(userDocRef, {
+          lastLoginAt: now,
+          status: 'online',
+        });
+        const data = userSnap.data() as User;
+        return {
+          ...data,
+          lastLoginAt: now,
+          status: 'online',
+        };
+      } else {
+        // Fallback create user document if absent
+        const fallbackProfile: User = {
+          id: fbUser.uid,
+          name: fbUser.displayName || email.split('@')[0],
+          fullName: fbUser.displayName || email.split('@')[0],
+          email: fbUser.email || email,
+          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.displayName || email)}`,
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: now,
+          status: 'online',
+        };
+        await setDoc(userDocRef, fallbackProfile);
+        return fallbackProfile;
+      }
+    } catch (error: any) {
+      throw new Error(this.formatAuthError(error));
+    }
+  }
+
+  /**
+   * Signs out user and marks status as offline
+   */
+  async logout(): Promise<void> {
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          await updateDoc(doc(db, 'users', currentUser.uid), {
+            status: 'offline',
+            updatedAt: new Date().toISOString(),
+          });
+        } catch {
+          // Ignore offline status update if network fails
+        }
+      }
+      await signOut(auth);
+    } catch (error: any) {
+      throw new Error(this.formatAuthError(error));
+    }
+  }
+
+  /**
+   * Sends password reset email
+   */
+  async forgotPassword(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (error: any) {
+      throw new Error(this.formatAuthError(error));
+    }
+  }
+
+  /**
+   * Fetches user profile from Firestore
+   */
+  async getUserProfile(userId: string): Promise<User | null> {
+    try {
+      const snap = await getDoc(doc(db, 'users', userId));
+      if (snap.exists()) {
+        return snap.data() as User;
+      }
+      return null;
+    } catch (err) {
+      console.warn("Could not fetch user profile:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Subscribes to real-time Firebase Auth state changes
+   */
+  onAuthStateChanged(callback: (user: User | null, loading: boolean) => void): () => void {
+    return onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+      if (!fbUser) {
+        callback(null, false);
+        return;
+      }
+
+      try {
+        const userProfile = await this.getUserProfile(fbUser.uid);
+        if (userProfile) {
+          callback(userProfile, false);
+        } else {
+          // Construct baseline profile if Firestore doc is indexing
+          const baseline: User = {
+            id: fbUser.uid,
+            name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+            fullName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+            email: fbUser.email || '',
+            avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.uid)}`,
+            createdAt: new Date().toISOString(),
+            status: 'online',
+          };
+          callback(baseline, false);
+        }
+      } catch (err) {
+        console.error("Error loading user profile on auth state change:", err);
+        callback(null, false);
+      }
+    });
   }
 }
 
