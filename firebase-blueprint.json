@@ -154,6 +154,55 @@
         "updatedAt": { "type": "string", "description": "Last updated timestamp" }
       },
       "required": ["id", "ownerId", "title", "content", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Real-time family message document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Message ID" },
+        "chatRoomId": { "type": "string", "description": "Chat room ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "senderId": { "type": "string", "description": "User ID of sender" },
+        "senderName": { "type": "string", "description": "Display name of sender" },
+        "senderPhoto": { "type": "string", "description": "Avatar URL of sender" },
+        "text": { "type": "string", "description": "Text content" },
+        "type": { "type": "string", "description": "Message type", "enum": ["text", "image", "file", "system"] },
+        "createdAt": { "type": "string", "description": "Timestamp" },
+        "updatedAt": { "type": "string", "description": "Updated timestamp" },
+        "editedAt": { "type": "string", "description": "Timestamp if edited" },
+        "deletedAt": { "type": "string", "description": "Timestamp if deleted" },
+        "replyToMessageId": { "type": "string", "description": "Parent message ID if reply" }
+      },
+      "required": ["id", "chatRoomId", "familyId", "senderId", "senderName", "type", "createdAt"]
+    },
+    "ChatReadState": {
+      "title": "ChatReadState",
+      "description": "Tracks the last read message per user per room",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Format: {chatRoomId}_{userId}" },
+        "chatRoomId": { "type": "string", "description": "Chat room ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "userId": { "type": "string", "description": "User ID" },
+        "lastReadMessageId": { "type": "string", "description": "ID of last read message" },
+        "lastReadAt": { "type": "string", "description": "Timestamp of read" }
+      },
+      "required": ["id", "chatRoomId", "userId", "lastReadAt"]
+    },
+    "TypingState": {
+      "title": "TypingState",
+      "description": "Temporary typing presence in chat room",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User ID" },
+        "chatRoomId": { "type": "string", "description": "Chat room ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "userId": { "type": "string", "description": "User ID" },
+        "userName": { "type": "string", "description": "User name" },
+        "updatedAt": { "type": "string", "description": "Heartbeat timestamp" }
+      },
+      "required": ["id", "chatRoomId", "userId", "userName", "updatedAt"]
     }
   },
   "firestore": {
@@ -177,9 +226,21 @@
       "schema": "ChatRoom",
       "description": "Chat rooms created for families"
     },
+    "/chatRooms/{chatRoomId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Real-time messages in chat room"
+    },
+    "/chatRooms/{chatRoomId}/typing/{userId}": {
+      "schema": "TypingState",
+      "description": "Real-time typing indicator states"
+    },
     "/chatMembers/{chatMemberId}": {
       "schema": "ChatMember",
       "description": "Members belonging to chat rooms"
+    },
+    "/chatReadStates/{readStateId}": {
+      "schema": "ChatReadState",
+      "description": "User read positions in chat rooms"
     },
     "/notifications/{notificationId}": {
       "schema": "Notification",

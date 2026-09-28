@@ -9,9 +9,13 @@ import { Avatar } from '../ui/Avatar';
 import { Heart, PlusCircle, Users, ArrowRight, Shield, Check, AlertCircle, LogOut } from 'lucide-react';
 import { FamilyInvite } from '../../types';
 
-export const OnboardingView: React.FC = () => {
+interface OnboardingViewProps {
+  onCancel?: () => void;
+}
+
+export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
   const { user, logout } = useAuth();
-  const { createFamily, inspectInviteCode, joinFamilyWithCode } = useFamily();
+  const { currentFamily, createFamily, inspectInviteCode, joinFamilyWithCode } = useFamily();
   const { t } = useLanguage();
 
   const [mode, setMode] = useState<'welcome' | 'create' | 'join'>('welcome');
@@ -135,8 +139,18 @@ export const OnboardingView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                {currentFamily && onCancel ? (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    ← Back to {currentFamily.name}
+                  </button>
+                ) : <span />}
                 <button
+                  type="button"
                   onClick={logout}
                   className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1.5"
                 >

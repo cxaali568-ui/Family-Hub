@@ -96,6 +96,31 @@ service cloud.firestore {
         isFamilyMember(request.resource.data.familyId)
       );
       allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(resource.data.familyId);
+
+      // --- Messages Subcollection ---
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (
+          isFamilyMember(resource.data.familyId) ||
+          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId)
+        );
+        allow create: if isAuthenticated() &&
+          request.resource.data.senderId == request.auth.uid &&
+          isFamilyMember(request.resource.data.familyId);
+        allow update: if isAuthenticated() && isFamilyMember(resource.data.familyId) && (
+          resource.data.senderId == request.auth.uid ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'isPinned', 'pinnedBy', 'pinnedAt'])
+        );
+        allow delete: if isAuthenticated() && isFamilyMember(resource.data.familyId) && (
+          resource.data.senderId == request.auth.uid ||
+          isFamilyAdminOrOwner(resource.data.familyId)
+        );
+      }
+
+      // --- Typing Indicators ---
+      match /typing/{userId} {
+        allow read: if isAuthenticated() && isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId);
+        allow write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
 
     // --- Chat Members ---
@@ -108,6 +133,15 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         isFamilyAdminOrOwner(resource.data.familyId)
+      );
+    }
+
+    // --- Chat Read States ---
+    match /chatReadStates/{readStateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid)
       );
     }
 

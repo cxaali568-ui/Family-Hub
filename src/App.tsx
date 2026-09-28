@@ -73,7 +73,7 @@ const AuthenticatedFamilyRouter: React.FC = () => {
 
   // If user has zero active family memberships or requested to join/create another family
   if (hasNoFamily || forceOnboarding || !currentFamily) {
-    return <OnboardingView />;
+    return <OnboardingView onCancel={() => setForceOnboarding(false)} />;
   }
 
   return (
