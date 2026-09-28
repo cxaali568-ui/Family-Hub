@@ -54,6 +54,123 @@ export interface FamilyMember {
 
 export type FamilyMembership = FamilyMember;
 
+/**
+ * Family Member Profile
+ * Represents an individual family member (adult, child, elderly, relative)
+ * Supports both registered users (userId present) and profile-only members (userId null)
+ */
+export interface FamilyMemberProfile {
+  id: string;
+  familyId: string;
+  userId?: string | null; // Optional: connects to registered user account if one exists
+  fullName: string;
+  nickname?: string;
+  profileImage?: string;
+  gender: 'male' | 'female' | 'other';
+  dateOfBirth?: string; // YYYY-MM-DD
+  relationship: string; // 'Father', 'Mother', 'Son', 'Daughter', 'Husband', 'Wife', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Uncle', 'Aunt', 'Cousin', etc.
+  phone?: string;
+  email?: string;
+  address?: string;
+  isChild?: boolean;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  status: 'active' | 'archived';
+}
+
+/**
+ * Child Profile & School Management
+ */
+export interface Child {
+  id: string;
+  familyId: string;
+  memberProfileId?: string; // Optional link to FamilyMemberProfile
+  fullName: string;
+  nickname?: string;
+  photo?: string;
+  gender: 'male' | 'female' | 'other';
+  dateOfBirth: string; // YYYY-MM-DD
+  bloodGroup?: string;
+  relationship: string;
+  phone?: string;
+
+  // School Information
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  classGrade?: string; // e.g. "Class 5", "Grade 8"
+  section?: string; // e.g. "A", "Blue"
+  rollNumber?: string;
+  admissionNumber?: string;
+  teacherName?: string;
+  teacherPhone?: string;
+  schoolTiming?: string; // e.g. "8:00 AM - 1:30 PM"
+
+  // School Fees
+  tuitionFee: number;
+  transportFee: number;
+  otherFee: number;
+  totalMonthlyFee: number; // automatically calculated sum
+  feeDueDate?: number | string; // e.g. 5th of every month
+  feeNotes?: string;
+
+  // Emergency & Contact
+  emergencyContactName?: string;
+  emergencyContactRelation?: string;
+  emergencyContactPhone?: string;
+  emergencyContactAltPhone?: string;
+  emergencyNotes?: string;
+
+  generalNotes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChildGuardian {
+  id: string;
+  childId: string;
+  familyId: string;
+  memberId?: string; // Link to FamilyMemberProfile or User
+  memberName: string;
+  relationship: string; // 'Father', 'Mother', 'Guardian', etc.
+  phone?: string;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface SchoolFeePayment {
+  id: string;
+  childId: string;
+  familyId: string;
+  month: string; // e.g. "September"
+  year: number; // e.g. 2026
+  amount: number;
+  paymentDate: string;
+  paidBy: string;
+  paidByUserId?: string;
+  status: 'Paid' | 'Pending' | 'Partial';
+  receiptUrl?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ChildDocument {
+  id: string;
+  childId: string;
+  familyId: string;
+  title: string;
+  docType: 'admission' | 'result_card' | 'fee_receipt' | 'school_letter' | 'certificate' | 'other';
+  url: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface FamilyInvite {
   id: string;
   familyId: string;

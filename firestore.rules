@@ -55,6 +55,41 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
       allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       allow delete: if isAuthenticated() && isFamilyOwner(familyId);
+
+      // --- Member Profiles Subcollection ---
+      match /memberProfiles/{memberId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          request.resource.data.userId == request.auth.uid
+        );
+        allow update: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          (resource.data.userId != null && resource.data.userId == request.auth.uid)
+        );
+        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
+
+      // --- Children & School Subcollection ---
+      match /children/{childId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+
+        match /guardians/{guardianId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /fees/{feeId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /documents/{docId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+      }
     }
 
     // --- Family Memberships Collection ---

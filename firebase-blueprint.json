@@ -203,6 +203,81 @@
         "updatedAt": { "type": "string", "description": "Heartbeat timestamp" }
       },
       "required": ["id", "chatRoomId", "userId", "userName", "updatedAt"]
+    },
+    "FamilyMemberProfile": {
+      "title": "FamilyMemberProfile",
+      "description": "Individual profile of a family member (adult, child, elderly)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Profile ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "userId": { "type": "string", "description": "Optional linked user ID" },
+        "fullName": { "type": "string", "description": "Member full name" },
+        "nickname": { "type": "string", "description": "Optional nickname" },
+        "relationship": { "type": "string", "description": "Relationship to family" },
+        "gender": { "type": "string", "description": "Gender" },
+        "dateOfBirth": { "type": "string", "description": "Date of birth" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "isChild": { "type": "boolean", "description": "Whether member is a child" },
+        "status": { "type": "string", "description": "Status" }
+      },
+      "required": ["id", "familyId", "fullName", "relationship"]
+    },
+    "Child": {
+      "title": "Child",
+      "description": "Child profile with school and tuition management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Child ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "fullName": { "type": "string", "description": "Child full name" },
+        "schoolName": { "type": "string", "description": "School name" },
+        "classGrade": { "type": "string", "description": "Class or grade" },
+        "tuitionFee": { "type": "number", "description": "Tuition fee" },
+        "totalMonthlyFee": { "type": "number", "description": "Total monthly fee" }
+      },
+      "required": ["id", "familyId", "fullName", "dateOfBirth"]
+    },
+    "ChildGuardian": {
+      "title": "ChildGuardian",
+      "description": "Guardian relationship for a child",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Guardian record ID" },
+        "childId": { "type": "string", "description": "Child ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "memberName": { "type": "string", "description": "Guardian name" },
+        "relationship": { "type": "string", "description": "Guardian relationship" }
+      },
+      "required": ["id", "childId", "familyId", "memberName", "relationship"]
+    },
+    "SchoolFeePayment": {
+      "title": "SchoolFeePayment",
+      "description": "Monthly fee payment entry for child",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Fee payment ID" },
+        "childId": { "type": "string", "description": "Child ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "month": { "type": "string", "description": "Month" },
+        "amount": { "type": "number", "description": "Amount paid" },
+        "status": { "type": "string", "description": "Payment status" }
+      },
+      "required": ["id", "childId", "familyId", "month", "amount", "status"]
+    },
+    "ChildDocument": {
+      "title": "ChildDocument",
+      "description": "Document record attached to a child profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID" },
+        "childId": { "type": "string", "description": "Child ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "title": { "type": "string", "description": "Document title" },
+        "url": { "type": "string", "description": "File URL" }
+      },
+      "required": ["id", "childId", "familyId", "title", "url"]
     }
   },
   "firestore": {
@@ -213,6 +288,26 @@
     "/families/{familyId}": {
       "schema": "Family",
       "description": "Family collection storing household metadata"
+    },
+    "/families/{familyId}/memberProfiles/{memberId}": {
+      "schema": "FamilyMemberProfile",
+      "description": "Detailed family member profiles"
+    },
+    "/families/{familyId}/children/{childId}": {
+      "schema": "Child",
+      "description": "Child profiles and education management"
+    },
+    "/families/{familyId}/children/{childId}/guardians/{guardianId}": {
+      "schema": "ChildGuardian",
+      "description": "Child guardians"
+    },
+    "/families/{familyId}/children/{childId}/fees/{feeId}": {
+      "schema": "SchoolFeePayment",
+      "description": "Child school fee payment history"
+    },
+    "/families/{familyId}/children/{childId}/documents/{docId}": {
+      "schema": "ChildDocument",
+      "description": "Child documents"
     },
     "/familyMembers/{membershipId}": {
       "schema": "FamilyMember",
