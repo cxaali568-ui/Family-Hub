@@ -296,6 +296,178 @@ export interface MedicalRecord {
   notes?: string;
 }
 
+/**
+ * Step 5: Complete Medical Management Domain
+ */
+export interface MedicalProfile {
+  id: string;
+  familyId: string;
+  personId: string; // memberProfileId or childId
+  personName: string;
+  personType: 'adult' | 'child' | 'elderly';
+  photo?: string;
+  bloodGroup: string;
+  height?: string; // e.g. "175 cm" or "5 ft 9 in"
+  weight?: string; // e.g. "70 kg"
+  importantAlert?: string; // ⚠️ High visibility alert e.g. "Severe Penicillin Allergy"
+  surgeries?: string;
+  medicalHistory?: string;
+  emergencyNotes?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Allergy {
+  id: string;
+  profileId: string;
+  familyId: string;
+  name: string;
+  type: 'Medication' | 'Food' | 'Environmental' | 'Other';
+  severity: 'Mild' | 'Moderate' | 'Severe';
+  reaction?: string;
+  isSevereAlert: boolean;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface MedicalCondition {
+  id: string;
+  profileId: string;
+  familyId: string;
+  name: string;
+  dateDiagnosed?: string;
+  status: 'Active' | 'Controlled' | 'Resolved' | 'Historical';
+  doctor?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Medicine {
+  id: string;
+  profileId: string;
+  familyId: string;
+  name: string;
+  strength?: string; // e.g. "500 mg"
+  form?: string; // e.g. "Tablet", "Syrup", "Injection", "Drops"
+  dose: string; // e.g. "1 tablet"
+  frequency: string; // e.g. "Twice daily after meals"
+  reminderTime?: string; // e.g. "08:00 AM, 08:00 PM"
+  startDate: string;
+  endDate?: string;
+  prescribedBy?: string;
+  status: 'Active' | 'Completed' | 'Stopped';
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Doctor {
+  id: string;
+  profileId: string;
+  familyId: string;
+  name: string;
+  specialty: string;
+  hospitalClinic: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface MedicalAppointment {
+  id: string;
+  profileId: string;
+  familyId: string;
+  personName: string;
+  doctorName: string;
+  hospitalClinic: string;
+  date: string;
+  time: string;
+  appointmentType: string;
+  reasonNotes?: string;
+  status: 'Upcoming' | 'Completed' | 'Cancelled';
+  reminderTime?: string;
+  createdAt: string;
+}
+
+export interface MedicalDocument {
+  id: string;
+  profileId: string;
+  familyId: string;
+  title: string;
+  category: 'Prescription' | 'Lab Report' | 'X-Ray' | 'Certificate' | 'Hospital Document' | 'Vaccination' | 'Other';
+  fileName: string;
+  fileSize: number;
+  url: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  notes?: string;
+}
+
+/**
+ * Step 5: Special Care Person System
+ */
+export interface SpecialCareProfile {
+  id: string;
+  familyId: string;
+  personId: string;
+  personName: string;
+  personType: 'member' | 'child';
+  photo?: string;
+  careLevel: 'General Support' | 'Regular Assistance' | 'High Assistance';
+  primaryCaregiverName: string;
+  primaryCaregiverId?: string;
+  primaryCaregiverPhone?: string;
+  secondaryCaregiverName?: string;
+  secondaryCaregiverPhone?: string;
+  mobilityNeeds?: string;
+  dietaryRequirements?: string;
+  communicationPreferences?: string;
+  careAlert?: string; // e.g. "Needs assistance when walking", "Do not leave alone"
+  emergencyInstructions?: string;
+  generalNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CareNeed {
+  id: string;
+  careProfileId: string;
+  familyId: string;
+  title: string;
+  enabled: boolean;
+  notes?: string;
+}
+
+export interface CareRoutine {
+  id: string;
+  careProfileId: string;
+  familyId: string;
+  title: string;
+  time: string;
+  repeatPattern?: string; // e.g. "Daily", "Morning", "Evening"
+  notes?: string;
+  enabled: boolean;
+}
+
+export interface CareTask {
+  id: string;
+  careProfileId: string;
+  familyId: string;
+  routineId?: string;
+  title: string;
+  time: string;
+  status: 'Pending' | 'Completed' | 'Skipped';
+  date: string; // YYYY-MM-DD
+  completedBy?: string;
+  completedAt?: string;
+  notes?: string;
+}
+
 // Money & Bills
 export interface FamilyExpense {
   id: string;

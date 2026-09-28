@@ -70,6 +70,20 @@ service cloud.firestore {
         allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
 
+      // --- Members Subcollection (alias for memberProfiles) ---
+      match /members/{memberId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          request.resource.data.userId == request.auth.uid
+        );
+        allow update: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          (resource.data.userId != null && resource.data.userId == request.auth.uid)
+        );
+        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
+
       // --- Children & School Subcollection ---
       match /children/{childId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
@@ -82,12 +96,72 @@ service cloud.firestore {
 
         match /fees/{feeId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow create: if isAuthenticated() && isFamilyMember(familyId);
+          allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /documents/{docId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow create: if isAuthenticated() && isFamilyMember(familyId);
+          allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+      }
+
+      // --- Medical Profiles Subcollection ---
+      match /medicalProfiles/{profileId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+
+        match /allergies/{allergyId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /conditions/{conditionId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /medicines/{medicineId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /doctors/{doctorId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
           allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
         }
 
         match /documents/{docId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
           allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+      }
+
+      // --- Medical Appointments Subcollection ---
+      match /medicalAppointments/{appointmentId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
+
+      // --- Special Care Profiles Subcollection ---
+      match /specialCare/{careProfileId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+
+        match /needs/{needId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /routines/{routineId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        }
+
+        match /tasks/{taskId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
       }
     }
