@@ -253,6 +253,10 @@ export type NotificationType =
   | 'bill_due'
   | 'medical_update'
   | 'urgent_item'
+  | 'urgent_need'
+  | 'note_assigned'
+  | 'note_reminder'
+  | 'note_completed'
   | 'family_event'
   | 'system';
 
@@ -799,16 +803,153 @@ export interface FamilyPlan {
   attendees: string[];
 }
 
-// Notes
+// -------------------------------------------------------------
+// STEP 8: FAMILY NOTES + IMPORTANT NOTES + URGENT NEEDS + FAMILY INFORMATION CENTER
+// -------------------------------------------------------------
+
+export type NoteType = 'general' | 'important' | 'urgent' | 'information';
+export type NotePriority = 'low' | 'normal' | 'high' | 'urgent';
+export type NoteStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type ReminderOption =
+  | 'none'
+  | 'at_due_time'
+  | '1_day_before'
+  | '2_days_before'
+  | '3_days_before'
+  | '1_week_before';
+
+export interface NoteReminder {
+  enabled: boolean;
+  option: ReminderOption;
+  targetDate?: string; // ISO date string computed from due date & offset
+  notified?: boolean;
+}
+
+export interface NoteAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  url: string;
+  storagePath: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  uploadedByName?: string;
+}
+
 export interface FamilyNote {
   id: string;
   familyId: string;
+  type?: NoteType; // 'general' | 'important' | 'urgent' | 'information'
   title: string;
-  content: string;
-  category: 'grocery_list' | 'recipe' | 'house_rules' | 'general';
+  description?: string;
+  content?: string; // backwards compatibility alias for description
+  categoryId?: string;
+  categoryName?: string;
+  category?: string; // backwards compatibility alias
+  priority?: NotePriority; // 'low' | 'normal' | 'high' | 'urgent'
+  status?: NoteStatus; // 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  dueDate?: string; // YYYY-MM-DD
+  dueTime?: string; // HH:mm
+  reminder?: NoteReminder;
+  assignedToMemberId?: string;
+  assignedToMemberName?: string;
+  linkedPersonId?: string;
+  linkedPersonName?: string;
+  linkedPersonType?: 'member' | 'child';
   isPinned: boolean;
+  pinnedAt?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  attachments?: NoteAttachment[];
+  notifyFamily?: boolean;
+  notifyAssignedMember?: boolean;
+  createdBy?: string;
+  createdByName?: string;
+  authorName?: string; // backwards compatibility alias for createdByName
+  createdAt?: string;
   updatedAt: string;
-  authorName: string;
+  updatedBy?: string;
+  completedAt?: string;
+  completedBy?: string;
+  completedByName?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
+export interface NoteCategory {
+  id: string;
+  familyId: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  active: boolean;
+  isDefault?: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type FamilyInfoCategory =
+  | 'House Information'
+  | 'Important Contacts'
+  | 'Emergency Information'
+  | 'Utility Information'
+  | 'Vehicle Information'
+  | 'Travel Information'
+  | 'Document References'
+  | 'Other';
+
+export interface FamilyInformation {
+  id: string;
+  familyId: string;
+  title: string;
+  value: string;
+  description?: string;
+  category: FamilyInfoCategory;
+  contactName?: string;
+  contactPhone?: string;
+  contactRelationship?: string;
+  linkedPersonId?: string;
+  linkedPersonName?: string;
+  linkedPersonType?: 'member' | 'child';
+  visibility: 'family' | 'admins_only';
+  attachments: NoteAttachment[];
+  isPinned?: boolean;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  isArchived?: boolean;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
+export interface NoteFilter {
+  type?: 'all' | NoteType;
+  category?: string;
+  priority?: 'all' | NotePriority;
+  status?: 'all' | NoteStatus;
+  assignedToMemberId?: string;
+  linkedPersonId?: string;
+  dueDateRange?: 'all' | 'today' | 'upcoming_7' | 'upcoming_14' | 'upcoming_30' | 'overdue' | 'no_date';
+  isPinned?: boolean;
+  isArchived?: boolean;
+  searchQuery?: string;
+  sortBy?: 'recently_updated' | 'newest' | 'oldest' | 'due_date' | 'priority';
+}
+
+export interface NotesSummary {
+  totalNotes: number;
+  importantCount: number;
+  urgentCount: number;
+  pendingNeedsCount: number;
+  dueTodayCount: number;
+  overdueCount: number;
+  completedCount: number;
+  archivedCount: number;
+  informationCount: number;
 }
 
 // -------------------------------------------------------------

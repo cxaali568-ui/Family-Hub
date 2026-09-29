@@ -224,6 +224,44 @@ service cloud.firestore {
         allow create: if isAuthenticated() && isFamilyMember(familyId);
         allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
+
+      // --- Family Notes & Urgent Needs Subcollection (Step 8) ---
+      match /notes/{noteId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update: if isAuthenticated() && isFamilyMember(familyId);
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+
+        match /attachments/{attachmentId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
+        }
+      }
+
+      // --- Note Categories Subcollection ---
+      match /noteCategories/{categoryId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
+
+      // --- Family Information Center Subcollection ---
+      match /information/{informationId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update: if isAuthenticated() && isFamilyMember(familyId);
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+
+        match /attachments/{attachmentId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
+        }
+      }
     }
 
     // --- Family Memberships Collection ---

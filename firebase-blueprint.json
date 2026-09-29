@@ -395,9 +395,77 @@
         "paymentMethod": { "type": "string", "description": "Payment method" }
       },
       "required": ["id", "billId", "familyId", "amount", "paymentDate", "paidByName"]
+    },
+    "FamilyNote": {
+      "title": "FamilyNote",
+      "description": "Structured family note, important note, or urgent need",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Note unique ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "type": { "type": "string", "description": "Note type", "enum": ["general", "important", "urgent", "information"] },
+        "title": { "type": "string", "description": "Note title" },
+        "description": { "type": "string", "description": "Note detailed text" },
+        "categoryId": { "type": "string", "description": "Category identifier" },
+        "categoryName": { "type": "string", "description": "Category name" },
+        "priority": { "type": "string", "description": "Priority level", "enum": ["low", "normal", "high", "urgent"] },
+        "status": { "type": "string", "description": "Current status", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+        "dueDate": { "type": "string", "description": "Optional due calendar date (YYYY-MM-DD)" },
+        "assignedToMemberId": { "type": "string", "description": "Assigned family member ID" },
+        "assignedToMemberName": { "type": "string", "description": "Assigned family member name" },
+        "linkedPersonId": { "type": "string", "description": "Linked member or child ID" },
+        "isPinned": { "type": "boolean", "description": "Whether note is pinned to top" },
+        "isArchived": { "type": "boolean", "description": "Whether note is archived" },
+        "createdBy": { "type": "string", "description": "Author user ID" },
+        "createdByName": { "type": "string", "description": "Author display name" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["id", "familyId", "type", "title", "createdBy", "createdAt"]
+    },
+    "NoteCategory": {
+      "title": "NoteCategory",
+      "description": "Custom or default category for family notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Category ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "name": { "type": "string", "description": "Category display name" },
+        "active": { "type": "boolean", "description": "Whether category is active" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "name", "active"]
+    },
+    "FamilyInformation": {
+      "title": "FamilyInformation",
+      "description": "Information center record (house info, emergency contact, utility, vehicle)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Information card ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "title": { "type": "string", "description": "Information title" },
+        "value": { "type": "string", "description": "Information value / detail" },
+        "category": { "type": "string", "description": "Information category" },
+        "visibility": { "type": "string", "description": "Visibility scope", "enum": ["family", "admins_only"] },
+        "createdBy": { "type": "string", "description": "Author user ID" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "title", "value", "category", "createdBy", "createdAt"]
     }
   },
   "firestore": {
+    "/families/{familyId}/notes/{noteId}": {
+      "schema": "FamilyNote",
+      "description": "Family notes, important notes, and urgent needs"
+    },
+    "/families/{familyId}/noteCategories/{categoryId}": {
+      "schema": "NoteCategory",
+      "description": "Family note categories"
+    },
+    "/families/{familyId}/information/{informationId}": {
+      "schema": "FamilyInformation",
+      "description": "Family information center records"
+    },
     "/families/{familyId}/bills/{billId}": {
       "schema": "Bill",
       "description": "Family bills"
