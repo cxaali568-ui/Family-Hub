@@ -164,6 +164,33 @@ service cloud.firestore {
           allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
       }
+
+      // --- Family Expenses Subcollection (Step 6) ---
+      match /expenses/{expenseId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update: if isAuthenticated() && isFamilyMember(familyId) && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+      }
+
+      // --- Expense Categories Subcollection ---
+      match /expenseCategories/{categoryId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
+
+      // --- Monthly Budgets Subcollection ---
+      match /budgets/{budgetId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
     }
 
     // --- Family Memberships Collection ---

@@ -15,6 +15,7 @@ export interface Translations {
   nav: {
     chat: string;
     family: string;
+    expenses: string;
     money: string;
     medical: string;
     plans: string;
@@ -143,7 +144,8 @@ export const translations: Record<Language, Translations> = {
     privateNotice: "No family member can see or access this space. Your personal records are securely isolated.",
     nav: {
       chat: "Chat",
-      family: "Family",
+      family: "Members",
+      expenses: "Expenses",
       money: "Money",
       medical: "Medical",
       plans: "Plans",
@@ -271,6 +273,7 @@ export const translations: Record<Language, Translations> = {
     nav: {
       chat: "گفتگو (چیٹ)",
       family: "خاندان",
+      expenses: "اخراجات",
       money: "مالیات و اخراجات",
       medical: "طبی معلومات",
       plans: "منصوبے",

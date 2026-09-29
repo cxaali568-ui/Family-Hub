@@ -468,7 +468,135 @@ export interface CareTask {
   notes?: string;
 }
 
-// Money & Bills
+// Money & Bills (Step 6 Complete Family Expense System)
+export type PaymentMethodType = 'Cash' | 'Bank' | 'Card' | 'Online' | 'Mobile Wallet' | 'Other';
+
+export interface Expense {
+  id: string;
+  familyId: string;
+  amount: number;
+  amountMinor: number;
+  currency: string;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon?: string;
+  expenseDate: string; // YYYY-MM-DD
+  expenseTime?: string; // HH:MM
+  monthKey: string; // YYYY-MM
+  year: number;
+  month: number;
+  description: string;
+  paidByMemberId?: string;
+  paidByName: string;
+  forMemberId?: string;
+  forPersonName?: string;
+  paymentMethod: PaymentMethodType;
+  receiptPath?: string;
+  receiptUrl?: string;
+  receiptFileName?: string;
+  notes?: string;
+  clientRequestId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  familyId: string;
+  name: string;
+  icon: string;
+  color?: string;
+  active: boolean;
+  isCustom?: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FamilyBudget {
+  id: string;
+  familyId: string;
+  year: number;
+  month: number;
+  monthKey: string;
+  amount: number;
+  currency: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpenseSummary {
+  monthKey: string;
+  totalSpent: number;
+  transactionCount: number;
+  dailyAverage: number;
+  averageTransaction: number;
+  budgetAmount: number;
+  remainingBudget: number;
+  budgetUsagePercentage: number;
+  budgetStatus: 'normal' | 'warning' | 'reached' | 'exceeded';
+  largestExpense: Expense | null;
+  categoryTotals: Array<{
+    categoryId: string;
+    categoryName: string;
+    icon?: string;
+    amount: number;
+    percentage: number;
+    count: number;
+  }>;
+  payerTotals: Array<{
+    payerName: string;
+    memberId?: string;
+    amount: number;
+    percentage: number;
+    count: number;
+  }>;
+  personTotals: Array<{
+    personName: string;
+    memberId?: string;
+    amount: number;
+    percentage: number;
+    count: number;
+  }>;
+  dailyTotals: Array<{
+    date: string;
+    dayLabel: string;
+    amount: number;
+    count: number;
+  }>;
+  paymentMethodTotals: Array<{
+    method: string;
+    amount: number;
+    count: number;
+  }>;
+}
+
+export interface ExpenseFilter {
+  dateRangePreset?: 'today' | 'this_week' | 'this_month' | 'last_month' | 'custom';
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+  paidByName?: string;
+  forPersonName?: string;
+  paymentMethod?: string;
+  searchQuery?: string;
+  sortBy?: 'newest' | 'oldest' | 'highest' | 'lowest';
+}
+
+export interface MonthlyExpenseReport {
+  familyName: string;
+  currency: string;
+  year: number;
+  month: number;
+  monthLabel: string;
+  summary: ExpenseSummary;
+  expenses: Expense[];
+}
+
 export interface FamilyExpense {
   id: string;
   familyId: string;
@@ -581,6 +709,7 @@ export interface AIMessage {
 export type FamilyNavRoute =
   | 'chat'
   | 'family'
+  | 'expenses'
   | 'money'
   | 'medical'
   | 'plans'

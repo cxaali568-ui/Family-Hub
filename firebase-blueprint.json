@@ -278,9 +278,83 @@
         "url": { "type": "string", "description": "File URL" }
       },
       "required": ["id", "childId", "familyId", "title", "url"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Family household expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique expense record ID" },
+        "familyId": { "type": "string", "description": "Family ID reference" },
+        "amount": { "type": "number", "description": "Expense numeric amount" },
+        "amountMinor": { "type": "number", "description": "Integer minor units for safe arithmetic" },
+        "currency": { "type": "string", "description": "Currency code e.g. PKR" },
+        "categoryId": { "type": "string", "description": "Expense category identifier" },
+        "categoryName": { "type": "string", "description": "Expense category title" },
+        "categoryIcon": { "type": "string", "description": "Category icon name or emoji" },
+        "expenseDate": { "type": "string", "description": "Expense date YYYY-MM-DD" },
+        "expenseTime": { "type": "string", "description": "Expense time HH:MM optional" },
+        "monthKey": { "type": "string", "description": "Standard month key YYYY-MM" },
+        "year": { "type": "number", "description": "Calendar year" },
+        "month": { "type": "number", "description": "Month number 1-12" },
+        "description": { "type": "string", "description": "Expense description or item title" },
+        "paidByMemberId": { "type": "string", "description": "Family member who paid" },
+        "paidByName": { "type": "string", "description": "Display name of payer" },
+        "forMemberId": { "type": "string", "description": "Beneficiary family member or 'Family'" },
+        "forPersonName": { "type": "string", "description": "Display name of person expense was for" },
+        "paymentMethod": { "type": "string", "description": "Method of payment e.g. Cash, Card" },
+        "receiptPath": { "type": "string", "description": "Private storage path of receipt" },
+        "receiptUrl": { "type": "string", "description": "Download or preview URL of receipt" },
+        "notes": { "type": "string", "description": "Optional detailed notes" },
+        "createdBy": { "type": "string", "description": "User ID who created the record" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["id", "familyId", "amount", "currency", "categoryId", "expenseDate", "monthKey", "createdBy", "createdAt"]
+    },
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "description": "Standard and custom expense categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Category ID or slug" },
+        "familyId": { "type": "string", "description": "Family ID reference" },
+        "name": { "type": "string", "description": "Category display name" },
+        "icon": { "type": "string", "description": "Category icon" },
+        "active": { "type": "boolean", "description": "Whether category is active" },
+        "isCustom": { "type": "boolean", "description": "Whether custom created" }
+      },
+      "required": ["id", "familyId", "name", "active"]
+    },
+    "FamilyBudget": {
+      "title": "FamilyBudget",
+      "description": "Monthly family spending budget",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Budget ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "year": { "type": "number", "description": "Budget year" },
+        "month": { "type": "number", "description": "Budget month 1-12" },
+        "monthKey": { "type": "string", "description": "Standard month key YYYY-MM" },
+        "amount": { "type": "number", "description": "Budget target amount" },
+        "currency": { "type": "string", "description": "Currency code" }
+      },
+      "required": ["id", "familyId", "year", "month", "monthKey", "amount", "currency"]
     }
   },
   "firestore": {
+    "/families/{familyId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Family expenses"
+    },
+    "/families/{familyId}/expenseCategories/{categoryId}": {
+      "schema": "ExpenseCategory",
+      "description": "Expense categories"
+    },
+    "/families/{familyId}/budgets/{budgetId}": {
+      "schema": "FamilyBudget",
+      "description": "Monthly family budgets"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User account profiles"

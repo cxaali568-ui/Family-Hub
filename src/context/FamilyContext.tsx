@@ -75,8 +75,53 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingFamilies, setLoadingFamilies] = useState<boolean>(true);
 
-  // PRIMARY USER EXPERIENCE REQUIREMENT: Default route must be 'chat'!
-  const [currentRoute, setCurrentRoute] = useState<FamilyNavRoute>('chat');
+  // PRIMARY USER EXPERIENCE REQUIREMENT: Default route is 'chat', with support for direct URLs e.g. /family/expenses
+  const [currentRoute, setCurrentRouteState] = useState<FamilyNavRoute>(() => {
+    try {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      if (path.includes('/expenses') || hash.includes('expenses')) return 'expenses';
+      if (path.includes('/family') || hash.includes('family') || path.includes('/members')) return 'family';
+      if (path.includes('/medical') || hash.includes('medical')) return 'medical';
+      if (path.includes('/plans') || hash.includes('plans')) return 'plans';
+      if (path.includes('/notes') || hash.includes('notes')) return 'notes';
+      if (path.includes('/personal') || hash.includes('personal')) return 'personal';
+    } catch {}
+    return 'chat';
+  });
+
+  const setCurrentRoute = (route: FamilyNavRoute) => {
+    setCurrentRouteState(route);
+    try {
+      if (route === 'expenses') {
+        window.history.pushState(null, '', '/family/expenses');
+      } else if (route === 'family') {
+        window.history.pushState(null, '', '/family/members');
+      } else if (route === 'chat') {
+        window.history.pushState(null, '', '/');
+      } else {
+        window.history.pushState(null, '', `/${route}`);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const path = window.location.pathname.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+        if (path.includes('/expenses') || hash.includes('expenses')) setCurrentRouteState('expenses');
+        else if (path.includes('/family') || hash.includes('family') || path.includes('/members')) setCurrentRouteState('family');
+        else if (path.includes('/medical') || hash.includes('medical')) setCurrentRouteState('medical');
+        else if (path.includes('/plans') || hash.includes('plans')) setCurrentRouteState('plans');
+        else if (path.includes('/notes') || hash.includes('notes')) setCurrentRouteState('notes');
+        else if (path.includes('/personal') || hash.includes('personal')) setCurrentRouteState('personal');
+        else if (path === '/' || hash.includes('chat')) setCurrentRouteState('chat');
+      } catch {}
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Step 1 Household modules state
   const [expenses, setExpenses] = useState<FamilyExpense[]>(INITIAL_EXPENSES);
