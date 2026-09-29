@@ -62,8 +62,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   }[] = [
     { id: 'chat', label: t.nav.chat, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'family', label: t.nav.family, icon: <Users className="w-4 h-4" /> },
+    { id: 'expenses', label: t.nav.expenses || t.nav.money, icon: <DollarSign className="w-4 h-4" /> },
     { id: 'medical', label: t.nav.medical, icon: <HeartPulse className="w-4 h-4" /> },
-    { id: 'expenses', label: t.nav.expenses, icon: <DollarSign className="w-4 h-4" /> },
     { id: 'plans', label: t.nav.plans, icon: <Calendar className="w-4 h-4" /> },
     { id: 'photos', label: t.nav.photos, icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'documents', label: t.nav.documents, icon: <FileText className="w-4 h-4" /> },
@@ -177,7 +177,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
         {/* Navigation List in exact 1-12 order */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {navItems.map(item => {
-            const isActive = currentRoute === item.id;
+            const isActive =
+              currentRoute === item.id ||
+              (item.id === 'expenses' && currentRoute === 'money') ||
+              (item.id === 'money' && currentRoute === 'expenses');
             return (
               <button
                 key={item.id}
@@ -309,15 +312,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
           </button>
 
           <button
-            onClick={() => setCurrentRoute('money')}
+            onClick={() => setCurrentRoute('expenses')}
             className={`flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold transition-colors cursor-pointer ${
-              currentRoute === 'money'
+              currentRoute === 'expenses' || currentRoute === 'money'
                 ? 'text-indigo-600 dark:text-indigo-400'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             <DollarSign className="w-5 h-5 mb-0.5" />
-            <span>{t.nav.money}</span>
+            <span>{t.nav.expenses || t.nav.money}</span>
           </button>
 
           <button
@@ -393,29 +396,35 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
             )}
 
             <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-              {navItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    currentRoute === item.id
-                      ? 'bg-indigo-600 text-white'
-                      : item.isPersonal
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-500 text-white rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
+              {navItems.map(item => {
+                const isActive =
+                  currentRoute === item.id ||
+                  (item.id === 'expenses' && currentRoute === 'money') ||
+                  (item.id === 'money' && currentRoute === 'expenses');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white'
+                        : item.isPersonal
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-500 text-white rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </nav>
 
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">

@@ -80,7 +80,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.includes('/expenses') || hash.includes('expenses')) return 'expenses';
+      if (path.includes('/expenses') || hash.includes('expenses') || path.includes('/money') || hash.includes('money')) return 'expenses';
       if (path.includes('/family') || hash.includes('family') || path.includes('/members')) return 'family';
       if (path.includes('/medical') || hash.includes('medical')) return 'medical';
       if (path.includes('/plans') || hash.includes('plans')) return 'plans';
@@ -110,7 +110,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         const path = window.location.pathname.toLowerCase();
         const hash = window.location.hash.toLowerCase();
-        if (path.includes('/expenses') || hash.includes('expenses')) setCurrentRouteState('expenses');
+        if (path.includes('/expenses') || hash.includes('expenses') || path.includes('/money') || hash.includes('money')) setCurrentRouteState('expenses');
         else if (path.includes('/family') || hash.includes('family') || path.includes('/members')) setCurrentRouteState('family');
         else if (path.includes('/medical') || hash.includes('medical')) setCurrentRouteState('medical');
         else if (path.includes('/plans') || hash.includes('plans')) setCurrentRouteState('plans');

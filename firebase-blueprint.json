@@ -340,9 +340,76 @@
         "currency": { "type": "string", "description": "Currency code" }
       },
       "required": ["id", "familyId", "year", "month", "monthKey", "amount", "currency"]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "Family household bill obligation record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Bill ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "templateId": { "type": "string", "description": "Optional recurring template ID" },
+        "billTypeId": { "type": "string", "description": "Bill type ID" },
+        "billTypeName": { "type": "string", "description": "Type name e.g. Electricity" },
+        "providerName": { "type": "string", "description": "Provider name e.g. LESCO" },
+        "amount": { "type": "number", "description": "Bill amount" },
+        "paidAmount": { "type": "number", "description": "Amount paid so far" },
+        "remainingAmount": { "type": "number", "description": "Amount remaining" },
+        "currency": { "type": "string", "description": "Currency code" },
+        "dueDate": { "type": "string", "description": "Due date YYYY-MM-DD" },
+        "billingMonthKey": { "type": "string", "description": "Billing month key YYYY-MM" },
+        "status": { "type": "string", "description": "Status", "enum": ["Pending", "Paid", "Partially Paid", "Overdue", "Cancelled"] },
+        "accountNumberMasked": { "type": "string", "description": "Masked account number" }
+      },
+      "required": ["id", "familyId", "billTypeId", "billTypeName", "providerName", "amount", "dueDate", "status"]
+    },
+    "BillTemplate": {
+      "title": "BillTemplate",
+      "description": "Recurring bill schedule definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Template ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "billTypeId": { "type": "string", "description": "Bill type ID" },
+        "providerName": { "type": "string", "description": "Provider name" },
+        "amountType": { "type": "string", "description": "fixed or variable" },
+        "defaultAmount": { "type": "number", "description": "Default amount" },
+        "frequency": { "type": "string", "description": "Recurrence frequency" },
+        "startDate": { "type": "string", "description": "Start date" },
+        "nextDueDate": { "type": "string", "description": "Next due date" },
+        "active": { "type": "boolean", "description": "Active or paused status" }
+      },
+      "required": ["id", "familyId", "billTypeId", "providerName", "frequency", "nextDueDate", "active"]
+    },
+    "BillPayment": {
+      "title": "BillPayment",
+      "description": "Payment installment made toward a bill",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Payment ID" },
+        "billId": { "type": "string", "description": "Bill ID reference" },
+        "familyId": { "type": "string", "description": "Family ID reference" },
+        "amount": { "type": "number", "description": "Payment amount" },
+        "paymentDate": { "type": "string", "description": "Date of payment" },
+        "paidByName": { "type": "string", "description": "Name of payer" },
+        "paymentMethod": { "type": "string", "description": "Payment method" }
+      },
+      "required": ["id", "billId", "familyId", "amount", "paymentDate", "paidByName"]
     }
   },
   "firestore": {
+    "/families/{familyId}/bills/{billId}": {
+      "schema": "Bill",
+      "description": "Family bills"
+    },
+    "/families/{familyId}/billTemplates/{templateId}": {
+      "schema": "BillTemplate",
+      "description": "Recurring bill templates"
+    },
+    "/families/{familyId}/bills/{billId}/payments/{paymentId}": {
+      "schema": "BillPayment",
+      "description": "Bill payments"
+    },
     "/families/{familyId}/expenses/{expenseId}": {
       "schema": "Expense",
       "description": "Family expenses"

@@ -191,6 +191,39 @@ service cloud.firestore {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
         allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
+
+      // --- Bills Management Subcollection (Step 7) ---
+      match /bills/{billId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create, update: if isAuthenticated() && isFamilyMember(familyId);
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+
+        match /payments/{paymentId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
+        }
+
+        match /documents/{docId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
+        }
+      }
+
+      // --- Bill Templates Subcollection (Recurring) ---
+      match /billTemplates/{templateId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow write: if isAuthenticated() && isFamilyMember(familyId);
+      }
+
+      // --- Bill Types Subcollection ---
+      match /billTypes/{typeId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      }
     }
 
     // --- Family Memberships Collection ---

@@ -609,6 +609,157 @@ export interface FamilyExpense {
   notes?: string;
 }
 
+// Money & Bills (Step 7 Complete Bills Management System)
+export type BillStatus = 'Pending' | 'Paid' | 'Partially Paid' | 'Overdue' | 'Cancelled';
+export type BillFrequency = 'monthly' | 'bimonthly' | 'quarterly' | 'semiannual' | 'yearly' | 'custom';
+export type BillAmountType = 'fixed' | 'variable';
+
+export interface BillType {
+  id: string;
+  familyId: string;
+  name: string; // Electricity, Gas, Water, Internet, Mobile / Phone, Rent, School, Insurance, Subscription, Other
+  icon: string;
+  color?: string;
+  active: boolean;
+  isCustom?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BillTemplate {
+  id: string;
+  familyId: string;
+  billTypeId: string;
+  billTypeName: string;
+  billTypeIcon?: string;
+  providerName: string;
+  amountType: BillAmountType;
+  defaultAmount: number;
+  frequency: BillFrequency;
+  customIntervalDays?: number;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  nextDueDate: string; // YYYY-MM-DD (anchor date)
+  accountNumberMasked?: string;
+  accountNumberFull?: string;
+  referenceNumber?: string;
+  notes?: string;
+  active: boolean; // false when paused
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Bill {
+  id: string;
+  familyId: string;
+  templateId?: string; // link to BillTemplate if recurring
+  billTypeId: string;
+  billTypeName: string;
+  billTypeIcon?: string;
+  providerName: string;
+  amount: number;
+  amountMinor: number;
+  paidAmount: number;
+  remainingAmount: number;
+  currency: string;
+  dueDate: string; // YYYY-MM-DD
+  billingMonthKey: string; // YYYY-MM (e.g. '2026-10')
+  status: BillStatus;
+  accountNumberMasked?: string;
+  accountNumberFull?: string;
+  referenceNumber?: string;
+  notes?: string;
+  isRecurringInstance: boolean;
+  frequency?: string;
+  latestPaymentDate?: string;
+  latestPaidBy?: string;
+  receiptUrl?: string;
+  documentUrl?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+}
+
+export interface BillPayment {
+  id: string;
+  billId: string;
+  familyId: string;
+  amount: number;
+  amountMinor: number;
+  paymentDate: string; // YYYY-MM-DD
+  paidByMemberId?: string;
+  paidByName: string;
+  paymentMethod: PaymentMethodType;
+  referenceNumber?: string;
+  receiptPath?: string;
+  receiptUrl?: string;
+  receiptFileName?: string;
+  linkedExpenseId?: string; // Section 46 optional link
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface BillDocument {
+  id: string;
+  billId: string;
+  familyId: string;
+  title: string;
+  docType: 'bill' | 'receipt' | 'other';
+  fileName: string;
+  fileSize: number;
+  url: string;
+  storagePath: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface BillSummary {
+  monthKey: string;
+  monthLabel: string;
+  totalExpected: number;
+  totalPaid: number;
+  totalPending: number;
+  totalOverdue: number;
+  totalCancelled: number;
+  billCount: number;
+  paidCount: number;
+  pendingCount: number;
+  overdueCount: number;
+  billsByType: Array<{
+    billTypeId: string;
+    billTypeName: string;
+    icon?: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>;
+  todayBills: Bill[];
+  upcomingBills: Bill[];
+  overdueBills: Bill[];
+}
+
+export interface BillFilter {
+  status?: 'all' | 'pending' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
+  billTypeId?: string;
+  frequency?: 'all' | 'recurring' | 'onetime';
+  searchQuery?: string;
+  sortBy?: 'due_date' | 'amount' | 'recently_added' | 'status';
+}
+
+export interface MonthlyBillReport {
+  familyName: string;
+  currency: string;
+  year: number;
+  month: number;
+  monthLabel: string;
+  summary: BillSummary;
+  bills: Bill[];
+}
+
 export interface FamilyBill {
   id: string;
   familyId: string;
@@ -710,6 +861,7 @@ export type FamilyNavRoute =
   | 'chat'
   | 'family'
   | 'expenses'
+  | 'bills'
   | 'money'
   | 'medical'
   | 'plans'
