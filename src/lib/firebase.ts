@@ -31,7 +31,7 @@ if (!getApps().length) {
 export const auth: Auth = getAuth(app);
 
 // use custom database ID if provisioned, else default 
-export const db: Firestore firebaseConfig.firestoreDatabaseld 
+export const db: Firestore = firebaseConfig.firestoreDatabaseld 
   7 getFirestore(app, firebaseConfig.firestoreDatabaseld) 
   : getFirestore(app);
 
