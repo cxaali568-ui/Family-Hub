@@ -451,9 +451,78 @@
         "createdAt": { "type": "string", "description": "Creation timestamp" }
       },
       "required": ["id", "familyId", "title", "value", "category", "createdBy", "createdAt"]
+    },
+    "PhotoAlbum": {
+      "title": "PhotoAlbum",
+      "description": "Family photo album",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Album ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "name": { "type": "string", "description": "Album title / name" },
+        "description": { "type": "string", "description": "Album description" },
+        "category": { "type": "string", "description": "Album category" },
+        "albumDate": { "type": "string", "description": "Calendar date for album" },
+        "location": { "type": "string", "description": "Optional location name" },
+        "coverPhotoId": { "type": "string", "description": "Cover photo ID" },
+        "coverPhotoUrl": { "type": "string", "description": "Cover photo display URL" },
+        "isArchived": { "type": "boolean", "description": "Whether album is archived" },
+        "photoCount": { "type": "number", "description": "Total active photos" },
+        "createdBy": { "type": "string", "description": "Author user ID" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "name", "createdBy", "createdAt"]
+    },
+    "FamilyPhoto": {
+      "title": "FamilyPhoto",
+      "description": "Photo document in an album",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Photo ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "albumId": { "type": "string", "description": "Album reference ID" },
+        "fileName": { "type": "string", "description": "Original file name" },
+        "storagePath": { "type": "string", "description": "Storage path" },
+        "thumbnailUrl": { "type": "string", "description": "Thumbnail preview URL" },
+        "downloadUrl": { "type": "string", "description": "Download or full resolution URL" },
+        "caption": { "type": "string", "description": "Photo caption" },
+        "photoDate": { "type": "string", "description": "Date photo was captured" },
+        "location": { "type": "string", "description": "Location name" },
+        "peopleIds": { "type": "array", "items": { "type": "string" }, "description": "Tagged family member IDs" },
+        "fileSize": { "type": "number", "description": "File size in bytes" },
+        "mimeType": { "type": "string", "description": "MIME type" },
+        "uploadedBy": { "type": "string", "description": "Uploader user ID" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "albumId", "fileName", "downloadUrl", "uploadedBy", "createdAt"]
+    },
+    "PhotoFavorite": {
+      "title": "PhotoFavorite",
+      "description": "User personal photo bookmark / favorite",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Favorite record ID" },
+        "familyId": { "type": "string", "description": "Family reference ID" },
+        "userId": { "type": "string", "description": "User ID" },
+        "photoId": { "type": "string", "description": "Photo reference ID" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "userId", "photoId", "createdAt"]
     }
   },
   "firestore": {
+    "/families/{familyId}/albums/{albumId}": {
+      "schema": "PhotoAlbum",
+      "description": "Family photo albums"
+    },
+    "/families/{familyId}/albums/{albumId}/photos/{photoId}": {
+      "schema": "FamilyPhoto",
+      "description": "Family album photos"
+    },
+    "/families/{familyId}/photoFavorites/{favoriteId}": {
+      "schema": "PhotoFavorite",
+      "description": "User personal photo favorites"
+    },
     "/families/{familyId}/notes/{noteId}": {
       "schema": "FamilyNote",
       "description": "Family notes, important notes, and urgent needs"

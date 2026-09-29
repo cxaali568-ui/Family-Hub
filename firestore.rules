@@ -262,6 +262,34 @@ service cloud.firestore {
           allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
       }
+
+      // --- Photo Albums & Photos Subcollections (Step 9) ---
+      match /albums/{albumId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow update: if isAuthenticated() && isFamilyMember(familyId);
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+
+        match /photos/{photoId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow create: if isAuthenticated() && isFamilyMember(familyId);
+          allow update: if isAuthenticated() && isFamilyMember(familyId);
+          allow delete: if isAuthenticated() && (
+            isFamilyAdminOrOwner(familyId) ||
+            resource.data.uploadedBy == request.auth.uid
+          );
+        }
+      }
+
+      // --- Personal Photo Favorites Subcollection ---
+      match /photoFavorites/{favoriteId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
     }
 
     // --- Family Memberships Collection ---

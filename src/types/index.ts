@@ -257,6 +257,8 @@ export type NotificationType =
   | 'note_assigned'
   | 'note_reminder'
   | 'note_completed'
+  | 'photo_tagged'
+  | 'album_created'
   | 'family_event'
   | 'system';
 
@@ -950,6 +952,109 @@ export interface NotesSummary {
   completedCount: number;
   archivedCount: number;
   informationCount: number;
+}
+
+// -------------------------------------------------------------
+// STEP 9: FAMILY PHOTOS + PHOTO ALBUMS SYSTEM
+// -------------------------------------------------------------
+
+export type AlbumCategory =
+  | 'Family'
+  | 'Events'
+  | 'Travel'
+  | 'Birthdays'
+  | 'School'
+  | 'Kids'
+  | 'Holidays'
+  | 'Memories'
+  | 'Other';
+
+export interface PhotoAlbum {
+  id: string;
+  familyId: string;
+  name: string;
+  description?: string;
+  category: AlbumCategory | string;
+  albumDate?: string; // YYYY-MM-DD
+  location?: string;
+  coverPhotoId?: string;
+  coverPhotoUrl?: string;
+  isArchived: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  photoCount: number;
+  restrictedMemberIds?: string[]; // If restricted album (Section 50)
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
+export interface FamilyPhoto {
+  id: string;
+  familyId: string;
+  albumId: string;
+  fileName: string;
+  storagePath: string;
+  thumbnailPath?: string;
+  thumbnailUrl?: string;
+  downloadUrl: string;
+  caption?: string;
+  photoDate?: string; // YYYY-MM-DD
+  location?: string;
+  peopleIds?: string[]; // Tagged family member IDs
+  peopleNames?: string[]; // Cached tagged names
+  fileSize: number;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
+export interface PhotoFavorite {
+  id: string;
+  familyId: string;
+  userId: string;
+  photoId: string;
+  createdAt: string;
+}
+
+export interface PhotoUploadQueueItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  progress: number; // 0 to 100
+  status: 'pending' | 'uploading' | 'complete' | 'failed';
+  error?: string;
+  caption?: string;
+  photoDate?: string;
+  location?: string;
+  peopleIds?: string[];
+}
+
+export interface PhotoFilter {
+  searchQuery?: string;
+  category?: string;
+  memberId?: string; // Photos of specific member (tagged)
+  uploadedBy?: string; // My Uploads
+  dateRange?: 'all' | 'today' | 'this_week' | 'this_month' | 'this_year';
+  onlyFavorites?: boolean;
+  isArchived?: boolean;
+  sortBy?: 'newest' | 'oldest' | 'recently_uploaded' | 'photo_date';
+}
+
+export interface PhotosSummary {
+  totalAlbums: number;
+  totalPhotos: number;
+  recentUploadsCount: number;
+  favoritesCount: number;
 }
 
 // -------------------------------------------------------------
