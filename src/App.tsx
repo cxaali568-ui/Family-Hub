@@ -20,9 +20,11 @@ import { FamilyMembersView } from './components/family/FamilyMembersView';
 import { FamilyMoneyView } from './components/family/FamilyMoneyView';
 import { FamilyExpensesView } from './components/expenses/FamilyExpensesView';
 import { FamilyMedicalView } from './components/family/FamilyMedicalView';
-import { FamilyPlansView } from './components/family/FamilyPlansView';
+import { FamilyPlannerView } from './components/planner/FamilyPlannerView';
+import { FamilyBillsView } from './components/bills/FamilyBillsView';
 import { FamilyNotesView } from './components/family/FamilyNotesView';
 import { FamilyUrgentView } from './components/family/FamilyUrgentView';
+import { FamilyAIView } from './components/family/FamilyAIView';
 import { FamilyPhotosDocsView } from './components/family/FamilyPhotosDocsView';
 import { PersonalSpaceView } from './components/personal/PersonalSpaceView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -36,22 +38,29 @@ const MainContent: React.FC = () => {
       // PRIMARY USER EXPERIENCE REQUIREMENT: Chat is first and default!
       return <FamilyChatView />;
     case 'family':
-      return <FamilyMembersView />;
+      return <FamilyMembersView initialTab="members" />;
+    case 'children':
+      return <FamilyMembersView initialTab="children" />;
+    case 'medical':
+      return <FamilyMedicalView />;
     case 'expenses':
     case 'money':
       return <FamilyExpensesView />;
-    case 'medical':
-      return <FamilyMedicalView />;
+    case 'bills':
+      return <FamilyBillsView />;
+    case 'notes':
+      return <FamilyNotesView />;
+    case 'planner':
     case 'plans':
-      return <FamilyPlansView />;
+      return <FamilyPlannerView />;
     case 'photos':
       return <FamilyPhotosDocsView mode="photos" />;
     case 'documents':
       return <FamilyPhotosDocsView mode="documents" />;
-    case 'notes':
-      return <FamilyNotesView />;
     case 'urgent':
       return <FamilyUrgentView />;
+    case 'ai':
+      return <FamilyAIView />;
     case 'personal':
       return <PersonalSpaceView />;
     case 'settings':

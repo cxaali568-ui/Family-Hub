@@ -46,7 +46,9 @@ import {
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
-export const FamilyMembersView: React.FC = () => {
+export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' | 'invitations' }> = ({
+  initialTab = 'members',
+}) => {
   const {
     currentFamily,
     members: familyMemberships,
@@ -59,7 +61,13 @@ export const FamilyMembersView: React.FC = () => {
   const { user: currentUser } = useAuth();
 
   // Primary top tab: 'members' | 'children' | 'invitations'
-  const [activeTab, setActiveTab] = useState<'members' | 'children' | 'invitations'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'children' | 'invitations'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Real-time Member Profiles
   const [memberProfiles, setMemberProfiles] = useState<FamilyMemberProfile[]>([]);

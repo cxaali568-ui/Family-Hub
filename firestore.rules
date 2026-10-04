@@ -12,37 +12,36 @@ service cloud.firestore {
 
     function isFamilyMember(familyId) {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/families/$(familyId)) &&
-         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active')
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
     }
 
     function isFamilyAdminOrOwner(familyId) {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/families/$(familyId)) &&
-         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role in ['owner', 'admin'] &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active')
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
     }
 
     function isFamilyOwner(familyId) {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/families/$(familyId)) &&
-         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid) ||
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role == 'owner')
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role == 'owner' &&
+         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
     }
 
-    // --- Users Collection ---
+    // --- Users Collection (User can only read, create, or update their own profile) ---
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow read, create, update: if isOwner(userId);
       allow delete: if false;
     }
 
@@ -53,7 +52,9 @@ service cloud.firestore {
         isFamilyMember(familyId)
       );
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+      allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.id == resource.data.id;
       allow delete: if isAuthenticated() && isFamilyOwner(familyId);
 
       // --- Member Profiles Subcollection ---
@@ -62,11 +63,11 @@ service cloud.firestore {
         allow create: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           request.resource.data.userId == request.auth.uid
-        );
+        ) && request.resource.data.familyId == familyId;
         allow update: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           (resource.data.userId != null && resource.data.userId == request.auth.uid)
-        );
+        ) && request.resource.data.familyId == resource.data.familyId;
         allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
 
@@ -76,18 +77,20 @@ service cloud.firestore {
         allow create: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           request.resource.data.userId == request.auth.uid
-        );
+        ) && request.resource.data.familyId == familyId;
         allow update: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           (resource.data.userId != null && resource.data.userId == request.auth.uid)
-        );
+        ) && request.resource.data.familyId == resource.data.familyId;
         allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
 
       // --- Children & School Subcollection ---
       match /children/{childId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow create: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
 
         match /guardians/{guardianId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
@@ -110,7 +113,9 @@ service cloud.firestore {
       // --- Medical Profiles Subcollection ---
       match /medicalProfiles/{profileId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow create: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
 
         match /allergies/{allergyId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
@@ -147,7 +152,9 @@ service cloud.firestore {
       // --- Special Care Profiles Subcollection ---
       match /specialCare/{careProfileId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow create: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
 
         match /needs/{needId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
@@ -165,14 +172,19 @@ service cloud.firestore {
         }
       }
 
-      // --- Family Expenses Subcollection (Step 6) ---
+      // --- Family Expenses Subcollection ---
       match /expenses/{expenseId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && isFamilyMember(familyId);
-        allow update: if isAuthenticated() && isFamilyMember(familyId) && (
-          isFamilyAdminOrOwner(familyId) ||
-          resource.data.createdBy == request.auth.uid
-        );
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          (
+            isFamilyAdminOrOwner(familyId) ||
+            resource.data.createdBy == request.auth.uid
+          );
         allow delete: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           resource.data.createdBy == request.auth.uid
@@ -182,20 +194,21 @@ service cloud.firestore {
       // --- Expense Categories Subcollection ---
       match /expenseCategories/{categoryId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) && request.resource.data.familyId == familyId;
         allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
 
       // --- Monthly Budgets Subcollection ---
       match /budgets/{budgetId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow create, update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == familyId;
       }
 
-      // --- Bills Management Subcollection (Step 7) ---
+      // --- Bills Management Subcollection ---
       match /bills/{billId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) && request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) && request.resource.data.familyId == resource.data.familyId;
         allow delete: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           resource.data.createdBy == request.auth.uid
@@ -225,11 +238,15 @@ service cloud.firestore {
         allow update, delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
       }
 
-      // --- Family Notes & Urgent Needs Subcollection (Step 8) ---
+      // --- Family Notes & Urgent Needs Subcollection ---
       match /notes/{noteId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && isFamilyMember(familyId);
-        allow update: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.createdBy == resource.data.createdBy;
         allow delete: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           resource.data.createdBy == request.auth.uid
@@ -251,7 +268,12 @@ service cloud.firestore {
       // --- Family Information Center Subcollection ---
       match /information/{informationId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create, update: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.createdBy == resource.data.createdBy;
         allow delete: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           resource.data.createdBy == request.auth.uid
@@ -263,11 +285,15 @@ service cloud.firestore {
         }
       }
 
-      // --- Photo Albums & Photos Subcollections (Step 9) ---
+      // --- Photo Albums & Photos Subcollections ---
       match /albums/{albumId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && isFamilyMember(familyId);
-        allow update: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.createdBy == resource.data.createdBy;
         allow delete: if isAuthenticated() && (
           isFamilyAdminOrOwner(familyId) ||
           resource.data.createdBy == request.auth.uid
@@ -275,8 +301,12 @@ service cloud.firestore {
 
         match /photos/{photoId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow create: if isAuthenticated() && isFamilyMember(familyId);
-          allow update: if isAuthenticated() && isFamilyMember(familyId);
+          allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+            request.resource.data.familyId == familyId &&
+            request.resource.data.uploadedBy == request.auth.uid;
+          allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+            request.resource.data.familyId == resource.data.familyId &&
+            request.resource.data.uploadedBy == resource.data.uploadedBy;
           allow delete: if isAuthenticated() && (
             isFamilyAdminOrOwner(familyId) ||
             resource.data.uploadedBy == request.auth.uid
@@ -287,25 +317,117 @@ service cloud.firestore {
       // --- Personal Photo Favorites Subcollection ---
       match /photoFavorites/{favoriteId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow create: if isAuthenticated() &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.familyId == familyId;
         allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+
+      // --- Family Events & Planner Subcollection ---
+      match /events/{eventId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId &&
+          (
+            isFamilyAdminOrOwner(familyId) ||
+            resource.data.createdBy == request.auth.uid
+          );
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+
+        match /attachments/{attachmentId} {
+          allow read: if isAuthenticated() && isFamilyMember(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
+        }
+      }
+
+      // --- Family Reminders Subcollection ---
+      match /reminders/{reminderId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
+      }
+
+      // --- Family AI Conversations Subcollection ---
+      match /aiConversations/{conversationId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.createdBy == request.auth.uid
+        );
       }
     }
 
     // --- Family Memberships Collection ---
     match /familyMembers/{membershipId} {
-      allow read: if isAuthenticated() && (
+      allow get: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         isFamilyMember(resource.data.familyId)
       );
+
+      // Authenticated users can list:
+      // 1. Their own memberships (where userId == auth.uid)
+      // 2. Members of a family they actively belong to (where familyId == targetFamily)
+      allow list: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
+      );
+
+      // Creation:
+      // Case 1: Creator of family creating their own owner membership
+      // Case 2: User joining with an active invitation (role != 'owner' unless creator)
+      // Case 3: Family Admin/Owner adding a membership
       allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid ||
-        isFamilyAdminOrOwner(request.resource.data.familyId)
+        (
+          request.resource.data.userId == request.auth.uid &&
+          (
+            (request.resource.data.role == 'owner' &&
+             get(/databases/$(database)/documents/families/$(request.resource.data.familyId)).data.createdBy == request.auth.uid) ||
+            (request.resource.data.role in ['member', 'admin'] &&
+             exists(/databases/$(database)/documents/families/$(request.resource.data.familyId)))
+          )
+        ) ||
+        (
+          isFamilyAdminOrOwner(request.resource.data.familyId) &&
+          request.resource.data.role in ['admin', 'member']
+        )
       );
-      allow update: if isAuthenticated() && (
-        (resource.data.userId == request.auth.uid && request.resource.data.status in ['active', 'removed']) ||
-        isFamilyAdminOrOwner(resource.data.familyId)
-      );
+
+      // Updates: Identity and familyId are strictly immutable
+      allow update: if isAuthenticated() &&
+        request.resource.data.familyId == resource.data.familyId &&
+        request.resource.data.userId == resource.data.userId &&
+        (
+          // User updating their own status without modifying role
+          (
+            resource.data.userId == request.auth.uid &&
+            request.resource.data.role == resource.data.role &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'userName', 'userPhoto'])
+          ) ||
+          // Family Admin or Owner updating roles/status
+          (
+            isFamilyAdminOrOwner(resource.data.familyId) &&
+            (request.resource.data.role != 'owner' || isFamilyOwner(resource.data.familyId))
+          )
+        );
+
       allow delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         isFamilyAdminOrOwner(resource.data.familyId)
@@ -314,10 +436,20 @@ service cloud.firestore {
 
     // --- Family Invitations ---
     match /familyInvites/{inviteId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isFamilyAdminOrOwner(request.resource.data.familyId);
+      allow get: if isAuthenticated() && (
+        resource.data.status == 'pending' ||
+        isFamilyMember(resource.data.familyId)
+      );
+      allow list: if isAuthenticated() && (
+        (resource.data.status == 'pending' && resource.data.inviteCode != null) ||
+        isFamilyMember(resource.data.familyId)
+      );
+      allow create: if isAuthenticated() &&
+        isFamilyAdminOrOwner(request.resource.data.familyId) &&
+        request.resource.data.invitedBy == request.auth.uid;
       allow update: if isAuthenticated() && (
-        request.resource.data.status in ['accepted', 'expired'] ||
+        (request.resource.data.status in ['accepted', 'expired'] &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
         isFamilyAdminOrOwner(resource.data.familyId)
       );
       allow delete: if isAuthenticated() && isFamilyAdminOrOwner(resource.data.familyId);
@@ -325,7 +457,7 @@ service cloud.firestore {
 
     // --- Chat Rooms ---
     match /chatRooms/{chatRoomId} {
-      allow read: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow get, list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
       allow create: if isAuthenticated() && (
         request.resource.data.createdBy == request.auth.uid ||
         isFamilyMember(request.resource.data.familyId)
@@ -334,21 +466,28 @@ service cloud.firestore {
 
       // --- Messages Subcollection ---
       match /messages/{messageId} {
-        allow read: if isAuthenticated() && (
-          isFamilyMember(resource.data.familyId) ||
-          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId)
-        );
+        allow get, list: if isAuthenticated() &&
+          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId);
         allow create: if isAuthenticated() &&
           request.resource.data.senderId == request.auth.uid &&
-          isFamilyMember(request.resource.data.familyId);
-        allow update: if isAuthenticated() && isFamilyMember(resource.data.familyId) && (
-          resource.data.senderId == request.auth.uid ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'isPinned', 'pinnedBy', 'pinnedAt'])
-        );
-        allow delete: if isAuthenticated() && isFamilyMember(resource.data.familyId) && (
-          resource.data.senderId == request.auth.uid ||
-          isFamilyAdminOrOwner(resource.data.familyId)
-        );
+          request.resource.data.chatRoomId == chatRoomId &&
+          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId) &&
+          request.resource.data.familyId == get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId;
+        allow update: if isAuthenticated() &&
+          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId) &&
+          request.resource.data.chatRoomId == resource.data.chatRoomId &&
+          request.resource.data.senderId == resource.data.senderId &&
+          request.resource.data.familyId == resource.data.familyId &&
+          (
+            resource.data.senderId == request.auth.uid ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'isPinned', 'pinnedBy', 'pinnedAt'])
+          );
+        allow delete: if isAuthenticated() &&
+          isFamilyMember(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId) &&
+          (
+            resource.data.senderId == request.auth.uid ||
+            isFamilyAdminOrOwner(get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.familyId)
+          );
       }
 
       // --- Typing Indicators ---
@@ -360,9 +499,13 @@ service cloud.firestore {
 
     // --- Chat Members ---
     match /chatMembers/{chatMemberId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
+      );
+      allow list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
       allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.userId == request.auth.uid &&
         isFamilyMember(request.resource.data.familyId)
       );
       allow update, delete: if isAuthenticated() && (
@@ -373,53 +516,143 @@ service cloud.firestore {
 
     // --- Chat Read States ---
     match /chatReadStates/{readStateId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        (resource == null && request.resource.data.userId == request.auth.uid) ||
-        (resource != null && resource.data.userId == request.auth.uid)
+      allow get: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
       );
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        isFamilyMember(request.resource.data.familyId);
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // --- Notifications ---
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+      allow get, list: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        request.resource.data.recipientUserId != null &&
+        (request.resource.data.familyId == null || isFamilyMember(request.resource.data.familyId));
+      allow update: if isAuthenticated() &&
+        resource.data.recipientUserId == request.auth.uid &&
+        request.resource.data.recipientUserId == resource.data.recipientUserId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
       allow delete: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
     }
 
     // --- Activity Logs ---
     match /activityLogs/{activityId} {
-      allow read: if isAuthenticated() && isFamilyMember(resource.data.familyId);
-      allow create: if isAuthenticated() && request.resource.data.actorUserId == request.auth.uid;
+      allow get, list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow create: if isAuthenticated() &&
+        request.resource.data.actorUserId == request.auth.uid &&
+        isFamilyMember(request.resource.data.familyId);
       allow update, delete: if false;
     }
 
-    // --- Strictly Private Personal Records ---
+    // --- Strictly Private Personal Records (ownerId partitioned) ---
     match /personalExpenses/{expenseId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
-        (resource != null && resource.data.ownerId == request.auth.uid)
-      );
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
     match /personalNotes/{noteId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
-        (resource != null && resource.data.ownerId == request.auth.uid)
-      );
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
     match /personalTasks/{taskId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null && request.resource.data.ownerId == request.auth.uid) ||
-        (resource != null && resource.data.ownerId == request.auth.uid)
-      );
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalSchoolWork/{itemId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalNeeds/{needId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalPlans/{planId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalReminders/{reminderId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalFiles/{fileId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalPhotos/{photoId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalAlbums/{albumId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /personalAIConversations/{convId} {
+      allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
     // --- Test connection document ---
     match /test/{docId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
   }
 }

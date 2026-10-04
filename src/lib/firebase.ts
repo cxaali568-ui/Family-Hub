@@ -1,17 +1,21 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, Firestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, Firestore, doc, getDoc } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
+// Safely resolve config value: ignore dummy "1" overrides and empty strings
+const resolveConfig = (envVal: string | undefined, defaultVal: string) => {
+  return envVal && envVal !== '1' && envVal.trim() !== '' ? envVal : defaultVal;
+};
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || appletConfig.firestoreDatabaseId,
+  apiKey: resolveConfig(import.meta.env.VITE_FIREBASE_API_KEY, appletConfig.apiKey),
+  authDomain: resolveConfig(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, appletConfig.authDomain),
+  projectId: resolveConfig(import.meta.env.VITE_FIREBASE_PROJECT_ID, appletConfig.projectId),
+  storageBucket: resolveConfig(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, appletConfig.storageBucket),
+  messagingSenderId: resolveConfig(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, appletConfig.messagingSenderId),
+  appId: resolveConfig(import.meta.env.VITE_FIREBASE_APP_ID, appletConfig.appId),
 };
 
 let app: FirebaseApp;
@@ -30,10 +34,10 @@ if (!getApps().length) {
 
 export const auth: Auth = getAuth(app);
 
-// use custom database ID if provisioned, else default 
-export const db: Firestore = firebaseConfig.firestoreDatabaseld 
-  7 getFirestore(app, firebaseConfig.firestoreDatabaseld) 
-  : getFirestore(app);
+// Use standard Firestore with auto-detect long polling for resilient connection in web/iframe previews
+export const db: Firestore = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 
 export const storage: FirebaseStorage = getStorage(app);
 
@@ -42,19 +46,14 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn("Could not set Auth persistence:", err);
 });
 
-// Test connection on boot according to skill guideline
+// Test connection helper
 export async function testConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDoc(doc(db, 'test', 'connection'));
     return true;
   } catch (error: any) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Firebase is currently offline or unreachable. Please check configuration.");
-      return false;
-    }
-    // Any permission or not-found error implies the server responded!
+    // Permission or not-found error implies the server responded!
     return true;
   }
 }
 
-testConnection();

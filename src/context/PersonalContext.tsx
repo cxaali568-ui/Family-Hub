@@ -2,10 +2,17 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   PersonalProfile,
   PersonalExpense,
-  PersonalTask,
+  PersonalSchoolWorkItem,
   PersonalNote,
-  AIMessage,
+  PersonalDailyNeed,
+  PersonalPlan,
+  PersonalReminder,
+  PersonalFile,
+  PersonalPhoto,
+  PersonalAlbum,
+  PersonalAIConversation,
   PersonalNavRoute,
+  AIMessage,
 } from '../types';
 import { personalService } from '../services/personalService';
 import { useAuth } from './AuthContext';
@@ -20,16 +27,46 @@ interface PersonalContextType {
   lockNow: () => void;
   enableLock: (pin: string) => void;
   disableLock: () => void;
+
+  // Data Collections
   expenses: PersonalExpense[];
-  tasks: PersonalTask[];
+  schoolWork: PersonalSchoolWorkItem[];
   notes: PersonalNote[];
-  aiMessages: AIMessage[];
-  addExpense: (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => Promise<void>;
+  dailyNeeds: PersonalDailyNeed[];
+  plans: PersonalPlan[];
+  reminders: PersonalReminder[];
+  files: PersonalFile[];
+  photos: PersonalPhoto[];
+  albums: PersonalAlbum[];
+  aiConversations: PersonalAIConversation[];
+
+  // Actions
+  addExpense: (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => Promise<PersonalExpense>;
   deleteExpense: (id: string) => Promise<void>;
-  addTask: (task: Omit<PersonalTask, 'id' | 'ownerId'>) => Promise<void>;
-  toggleTask: (id: string, currentCompleted: boolean) => Promise<void>;
-  addNote: (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => Promise<void>;
-  addAIMessage: (msg: Omit<AIMessage, 'id' | 'timestamp'>) => void;
+  addSchoolWorkItem: (item: Omit<PersonalSchoolWorkItem, 'id' | 'ownerId' | 'createdAt'>) => Promise<PersonalSchoolWorkItem>;
+  updateSchoolWorkItem: (id: string, updates: Partial<PersonalSchoolWorkItem>) => Promise<void>;
+  deleteSchoolWorkItem: (id: string) => Promise<void>;
+  addNote: (note: Omit<PersonalNote, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => Promise<PersonalNote>;
+  updateNote: (id: string, updates: Partial<PersonalNote>) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
+  addDailyNeed: (need: Omit<PersonalDailyNeed, 'id' | 'ownerId' | 'assignedTo' | 'createdAt'>) => Promise<PersonalDailyNeed>;
+  updateDailyNeed: (id: string, updates: Partial<PersonalDailyNeed>) => Promise<void>;
+  deleteDailyNeed: (id: string) => Promise<void>;
+  addPlan: (plan: Omit<PersonalPlan, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => Promise<PersonalPlan>;
+  updatePlan: (id: string, updates: Partial<PersonalPlan>) => Promise<void>;
+  deletePlan: (id: string) => Promise<void>;
+  addReminder: (reminder: Omit<PersonalReminder, 'id' | 'ownerId' | 'createdAt'>) => Promise<PersonalReminder>;
+  updateReminder: (id: string, updates: Partial<PersonalReminder>) => Promise<void>;
+  deleteReminder: (id: string) => Promise<void>;
+  uploadFile: (file: File, category?: PersonalFile['category']) => Promise<PersonalFile>;
+  deleteFile: (id: string, storagePath?: string) => Promise<void>;
+  uploadPhoto: (file: File, albumId?: string, caption?: string) => Promise<PersonalPhoto>;
+  deletePhoto: (id: string, storagePath?: string) => Promise<void>;
+  createAlbum: (title: string, description?: string) => Promise<PersonalAlbum>;
+  deleteAlbum: (albumId: string) => Promise<void>;
+  createAIConversation: (title: string, messages: AIMessage[]) => Promise<PersonalAIConversation>;
+  updateAIConversation: (id: string, updates: Partial<PersonalAIConversation>) => Promise<void>;
+  deleteAIConversation: (id: string) => Promise<void>;
 }
 
 const PersonalContext = createContext<PersonalContextType | undefined>(undefined);
@@ -43,36 +80,61 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentPersonalRoute, setCurrentPersonalRoute] = useState<PersonalNavRoute>('dashboard');
 
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
-  const [tasks, setTasks] = useState<PersonalTask[]>([]);
+  const [schoolWork, setSchoolWork] = useState<PersonalSchoolWorkItem[]>([]);
   const [notes, setNotes] = useState<PersonalNote[]>([]);
-  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
+  const [dailyNeeds, setDailyNeeds] = useState<PersonalDailyNeed[]>([]);
+  const [plans, setPlans] = useState<PersonalPlan[]>([]);
+  const [reminders, setReminders] = useState<PersonalReminder[]>([]);
+  const [files, setFiles] = useState<PersonalFile[]>([]);
+  const [photos, setPhotos] = useState<PersonalPhoto[]>([]);
+  const [albums, setAlbums] = useState<PersonalAlbum[]>([]);
+  const [aiConversations, setAiConversations] = useState<PersonalAIConversation[]>([]);
 
-  // When user switches or logs in, reset session unlock and refresh strictly for that ownerId
+  // Reset and subscribe strictly for current ownerId
   useEffect(() => {
     if (!ownerId) {
       setProfile(null);
       setIsUnlockedInSession(false);
       setExpenses([]);
-      setTasks([]);
+      setSchoolWork([]);
       setNotes([]);
-      setAiMessages([]);
+      setDailyNeeds([]);
+      setPlans([]);
+      setReminders([]);
+      setFiles([]);
+      setPhotos([]);
+      setAlbums([]);
+      setAiConversations([]);
       return;
     }
 
     const p = personalService.getProfile(ownerId);
     setProfile(p);
-    // If lock is not enabled for this user, they are automatically unlocked
     setIsUnlockedInSession(!p.isLockEnabled);
 
-    // Real-time Firestore subscriptions strictly filtered by ownerId
+    // Subscriptions strictly scoped to ownerId
     const unsubExpenses = personalService.subscribeExpenses(ownerId, setExpenses);
-    const unsubTasks = personalService.subscribeTasks(ownerId, setTasks);
+    const unsubSchoolWork = personalService.subscribeSchoolWork(ownerId, setSchoolWork);
     const unsubNotes = personalService.subscribeNotes(ownerId, setNotes);
+    const unsubDailyNeeds = personalService.subscribeDailyNeeds(ownerId, setDailyNeeds);
+    const unsubPlans = personalService.subscribePlans(ownerId, setPlans);
+    const unsubReminders = personalService.subscribeReminders(ownerId, setReminders);
+    const unsubFiles = personalService.subscribeFiles(ownerId, setFiles);
+    const unsubPhotos = personalService.subscribePhotos(ownerId, setPhotos);
+    const unsubAlbums = personalService.subscribeAlbums(ownerId, setAlbums);
+    const unsubAI = personalService.subscribeAIConversations(ownerId, setAiConversations);
 
     return () => {
       unsubExpenses();
-      unsubTasks();
+      unsubSchoolWork();
       unsubNotes();
+      unsubDailyNeeds();
+      unsubPlans();
+      unsubReminders();
+      unsubFiles();
+      unsubPhotos();
+      unsubAlbums();
+      unsubAI();
     };
   }, [ownerId]);
 
@@ -101,42 +163,112 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const disableLock = () => {
     if (!ownerId) return;
     personalService.setLockEnabled(ownerId, false);
-    setIsUnlockedInSession(true);
     setProfile(personalService.getProfile(ownerId));
+    setIsUnlockedInSession(true);
   };
 
   const addExpense = async (expense: Omit<PersonalExpense, 'id' | 'ownerId'>) => {
-    if (!ownerId) return;
-    await personalService.addExpense(ownerId, expense);
+    return personalService.addExpense(ownerId, expense);
   };
 
   const deleteExpense = async (id: string) => {
-    if (!ownerId) return;
-    await personalService.deleteExpense(ownerId, id);
+    return personalService.deleteExpense(ownerId, id);
   };
 
-  const addTask = async (task: Omit<PersonalTask, 'id' | 'ownerId'>) => {
-    if (!ownerId) return;
-    await personalService.addTask(ownerId, task);
+  const addSchoolWorkItem = async (item: Omit<PersonalSchoolWorkItem, 'id' | 'ownerId' | 'createdAt'>) => {
+    return personalService.addSchoolWorkItem(ownerId, item);
   };
 
-  const toggleTask = async (id: string, currentCompleted: boolean) => {
-    if (!ownerId) return;
-    await personalService.toggleTask(ownerId, id, !currentCompleted);
+  const updateSchoolWorkItem = async (id: string, updates: Partial<PersonalSchoolWorkItem>) => {
+    return personalService.updateSchoolWorkItem(ownerId, id, updates);
   };
 
-  const addNote = async (note: Omit<PersonalNote, 'id' | 'ownerId' | 'updatedAt'>) => {
-    if (!ownerId) return;
-    await personalService.addNote(ownerId, note);
+  const deleteSchoolWorkItem = async (id: string) => {
+    return personalService.deleteSchoolWorkItem(ownerId, id);
   };
 
-  const addAIMessage = (msg: Omit<AIMessage, 'id' | 'timestamp'>) => {
-    const newMsg: AIMessage = {
-      id: `ai-${Date.now()}`,
-      ...msg,
-      timestamp: new Date().toISOString(),
-    };
-    setAiMessages(prev => [...prev, newMsg]);
+  const addNote = async (note: Omit<PersonalNote, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => {
+    return personalService.addNote(ownerId, note);
+  };
+
+  const updateNote = async (id: string, updates: Partial<PersonalNote>) => {
+    return personalService.updateNote(ownerId, id, updates);
+  };
+
+  const deleteNote = async (id: string) => {
+    return personalService.deleteNote(ownerId, id);
+  };
+
+  const addDailyNeed = async (need: Omit<PersonalDailyNeed, 'id' | 'ownerId' | 'assignedTo' | 'createdAt'>) => {
+    return personalService.addDailyNeed(ownerId, need);
+  };
+
+  const updateDailyNeed = async (id: string, updates: Partial<PersonalDailyNeed>) => {
+    return personalService.updateDailyNeed(ownerId, id, updates);
+  };
+
+  const deleteDailyNeed = async (id: string) => {
+    return personalService.deleteDailyNeed(ownerId, id);
+  };
+
+  const addPlan = async (plan: Omit<PersonalPlan, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => {
+    return personalService.addPlan(ownerId, plan);
+  };
+
+  const updatePlan = async (id: string, updates: Partial<PersonalPlan>) => {
+    return personalService.updatePlan(ownerId, id, updates);
+  };
+
+  const deletePlan = async (id: string) => {
+    return personalService.deletePlan(ownerId, id);
+  };
+
+  const addReminder = async (reminder: Omit<PersonalReminder, 'id' | 'ownerId' | 'createdAt'>) => {
+    return personalService.addReminder(ownerId, reminder);
+  };
+
+  const updateReminder = async (id: string, updates: Partial<PersonalReminder>) => {
+    return personalService.updateReminder(ownerId, id, updates);
+  };
+
+  const deleteReminder = async (id: string) => {
+    return personalService.deleteReminder(ownerId, id);
+  };
+
+  const uploadFile = async (file: File, category?: PersonalFile['category']) => {
+    return personalService.uploadFile(ownerId, file, category);
+  };
+
+  const deleteFile = async (id: string, storagePath?: string) => {
+    return personalService.deleteFile(ownerId, id, storagePath);
+  };
+
+  const uploadPhoto = async (file: File, albumId?: string, caption?: string) => {
+    return personalService.uploadPhoto(ownerId, file, albumId, caption);
+  };
+
+  const deletePhoto = async (id: string, storagePath?: string) => {
+    return personalService.deletePhoto(ownerId, id, storagePath);
+  };
+
+  const createAlbum = async (title: string, description?: string) => {
+    return personalService.createAlbum(ownerId, title, description);
+  };
+
+  const deleteAlbum = async (albumId: string) => {
+    return personalService.deleteAlbum(ownerId, albumId);
+  };
+
+  const createAIConversation = async (title: string, messages: AIMessage[]) => {
+    return personalService.createAIConversation(ownerId, title, messages);
+  };
+
+  const updateAIConversation = async (id: string, updates: Partial<PersonalAIConversation>) => {
+    return personalService.updateAIConversation(ownerId, id, updates);
+  };
+
+  const deleteAIConversation = async (id: string) => {
+    return personalService.deleteAIConversation(ownerId, id);
   };
 
   return (
@@ -152,15 +284,41 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         enableLock,
         disableLock,
         expenses,
-        tasks,
+        schoolWork,
         notes,
-        aiMessages,
+        dailyNeeds,
+        plans,
+        reminders,
+        files,
+        photos,
+        albums,
+        aiConversations,
         addExpense,
         deleteExpense,
-        addTask,
-        toggleTask,
+        addSchoolWorkItem,
+        updateSchoolWorkItem,
+        deleteSchoolWorkItem,
         addNote,
-        addAIMessage,
+        updateNote,
+        deleteNote,
+        addDailyNeed,
+        updateDailyNeed,
+        deleteDailyNeed,
+        addPlan,
+        updatePlan,
+        deletePlan,
+        addReminder,
+        updateReminder,
+        deleteReminder,
+        uploadFile,
+        deleteFile,
+        uploadPhoto,
+        deletePhoto,
+        createAlbum,
+        deleteAlbum,
+        createAIConversation,
+        updateAIConversation,
+        deleteAIConversation,
       }}
     >
       {children}
@@ -169,7 +327,7 @@ export const PersonalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export const usePersonal = () => {
-  const ctx = useContext(PersonalContext);
-  if (!ctx) throw new Error('usePersonal must be used within PersonalProvider');
-  return ctx;
+  const context = useContext(PersonalContext);
+  if (!context) throw new Error('usePersonal must be used within PersonalProvider');
+  return context;
 };

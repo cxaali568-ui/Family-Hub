@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { usePersonal } from '../../context/PersonalContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useFamily } from '../../context/FamilyContext';
+import { useAuth } from '../../context/AuthContext';
+import { familyAIService } from '../../services/familyAIService';
 import { aiService, AIContextPayload } from '../../services/aiService';
-import { AIMessage, PersonalAIConversation } from '../../types';
+import { FamilyAIConversation, AIMessage } from '../../types';
 import {
   Sparkles,
   Send,
@@ -12,62 +13,96 @@ import {
   Trash2,
   Edit2,
   MessageSquare,
-  Lock,
-  Search,
   Paperclip,
   Square,
   RotateCcw,
   Copy,
   Check,
   Settings as SettingsIcon,
+  AlertCircle,
   ShieldCheck,
+  Search,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { Badge } from '../ui/Badge';
 import { SafeMarkdown } from '../ai/SafeMarkdown';
 import { ContextPickerModal } from '../ai/ContextPickerModal';
 import { AISettingsModal } from '../ai/AISettingsModal';
+import { billService } from '../../services/billService';
+import { eventService } from '../../services/eventService';
+import { expenseService } from '../../services/expenseService';
+import { noteService } from '../../services/noteService';
+import { childService } from '../../services/childService';
 
-export const PersonalAIChat: React.FC = () => {
-  const {
-    aiConversations,
-    createAIConversation,
-    updateAIConversation,
-    deleteAIConversation,
-    notes,
-    expenses,
-    plans,
-    schoolWork,
-  } = usePersonal();
-  const { t } = useLanguage();
+export const FamilyAIView: React.FC = () => {
+  const { currentFamily, members } = useFamily();
+  const { user } = useAuth();
 
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<FamilyAIConversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamingText, setStreamingText] = useState('');
-  const [conversationSearch, setConversationSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<'auto' | 'gemini' | 'openai'>('auto');
 
-  // Modals & Context
+  // Modals
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedContext, setSelectedContext] = useState<AIContextPayload[]>([]);
-  const [renamingConv, setRenamingConv] = useState<PersonalAIConversation | null>(null);
+  const [renamingConv, setRenamingConv] = useState<FamilyAIConversation | null>(null);
   const [newTitle, setNewTitle] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Family data for context picker
+  const [familyBills, setFamilyBills] = useState<any[]>([]);
+  const [familyEvents, setFamilyEvents] = useState<any[]>([]);
+  const [familyExpenses, setFamilyExpenses] = useState<any[]>([]);
+  const [familyNotes, setFamilyNotes] = useState<any[]>([]);
+  const [familyChildren, setFamilyChildren] = useState<any[]>([]);
+
+  // Abort controller for Stop generation
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Subscribe to family AI conversations
+  useEffect(() => {
+    if (!currentFamily?.id) return;
+    const unsubscribe = familyAIService.subscribeFamilyAIConversations(
+      currentFamily.id,
+      (convs) => {
+        setConversations(convs);
+        if (!activeConvId && convs.length > 0) {
+          setActiveConvId(convs[0].id);
+        }
+      }
+    );
+    return () => unsubscribe();
+  }, [currentFamily?.id]);
+
+  // Load family context records
+  useEffect(() => {
+    if (!currentFamily?.id) return;
+    const unsubBills = billService.subscribeAllActiveBills(currentFamily.id, setFamilyBills);
+    const unsubEvents = eventService.subscribeEvents(currentFamily.id, setFamilyEvents);
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    const unsubExpenses = expenseService.subscribeMonthExpenses(currentFamily.id, currentMonthKey, setFamilyExpenses);
+    const unsubNotes = noteService.subscribeNotes(currentFamily.id, setFamilyNotes);
+    const unsubChildren = childService.subscribeChildren(currentFamily.id, setFamilyChildren);
+
+    return () => {
+      unsubBills();
+      unsubEvents();
+      unsubExpenses();
+      unsubNotes();
+      unsubChildren();
+    };
+  }, [currentFamily?.id]);
 
   const activeConversation =
-    aiConversations.find((c) => c.id === activeConversationId) || aiConversations[0] || null;
-
-  useEffect(() => {
-    if (!activeConversationId && aiConversations.length > 0) {
-      setActiveConversationId(aiConversations[0].id);
-    }
-  }, [aiConversations, activeConversationId]);
+    conversations.find((c) => c.id === activeConvId) || conversations[0] || null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,8 +113,14 @@ export const PersonalAIChat: React.FC = () => {
   }, [activeConversation?.messages, streamingText, isGenerating]);
 
   const handleStartNewChat = async () => {
-    const newConv = await createAIConversation('New Private Chat', []);
-    setActiveConversationId(newConv.id);
+    if (!currentFamily?.id || !user) return;
+    const newConv = await familyAIService.createFamilyAIConversation(
+      currentFamily.id,
+      'New Family Chat',
+      [],
+      user
+    );
+    setActiveConvId(newConv.id);
     setSelectedContext([]);
   };
 
@@ -93,15 +134,20 @@ export const PersonalAIChat: React.FC = () => {
 
   const handleSend = async (customPrompt?: string, attachedContext?: AIContextPayload[]) => {
     const textToSend = customPrompt || input.trim();
-    if (!textToSend || isGenerating) return;
+    if (!textToSend || isGenerating || !currentFamily?.id || !user) return;
 
     setInput('');
     const contextToUse = attachedContext || selectedContext;
 
-    let currentConv = activeConversation;
-    if (!currentConv) {
-      currentConv = await createAIConversation(textToSend.slice(0, 30), []);
-      setActiveConversationId(currentConv.id);
+    let conv = activeConversation;
+    if (!conv) {
+      conv = await familyAIService.createFamilyAIConversation(
+        currentFamily.id,
+        textToSend.slice(0, 30),
+        [],
+        user
+      );
+      setActiveConvId(conv.id);
     }
 
     const userMsg: AIMessage = {
@@ -113,10 +159,10 @@ export const PersonalAIChat: React.FC = () => {
       contextBadges: contextToUse.map((c) => ({ type: c.type as any, title: c.title })),
     };
 
-    const updatedMessages = [...(currentConv.messages || []), userMsg];
-    await updateAIConversation(currentConv.id, {
+    const updatedMessages = [...(conv.messages || []), userMsg];
+    await familyAIService.updateFamilyAIConversation(currentFamily.id, conv.id, {
       messages: updatedMessages,
-      title: currentConv.messages?.length === 0 ? textToSend.slice(0, 30) : currentConv.title,
+      title: conv.messages?.length === 0 ? textToSend.slice(0, 30) : conv.title,
     });
 
     setIsGenerating(true);
@@ -140,12 +186,12 @@ export const PersonalAIChat: React.FC = () => {
         {
           provider: selectedProvider,
           contextItems: contextToUse,
+          familyId: currentFamily.id,
           signal: controller.signal,
           systemInstruction:
-            'You are FamilyHub Private Assistant for the authenticated user. ' +
-            'CRITICAL PRIVACY: You have access ONLY to this user’s explicitly provided personal notes, expenses, and plans. ' +
-            'You cannot see other family members’ personal information or private medical records. ' +
-            'Explain financial calculations directly from verified numbers. Provide concise, encouraging responses.',
+            'You are FamilyHub AI Assistant for this household. ' +
+            'Provide warm, organized, actionable answers regarding family schedules, household bills, meals, and plans. ' +
+            'CRITICAL SAFETY: Never diagnose medical issues. Never fabricate numbers. Refer strictly to provided context.',
         }
       );
 
@@ -162,17 +208,17 @@ export const PersonalAIChat: React.FC = () => {
         model: usedModel,
       };
 
-      await updateAIConversation(currentConv.id, {
+      await familyAIService.updateFamilyAIConversation(currentFamily.id, conv.id, {
         messages: [...updatedMessages, botMsg],
       });
 
-      // Generate a title if first message
-      if (currentConv.messages?.length === 0) {
+      // Optionally generate a concise title if first exchange
+      if (conv.messages?.length === 0) {
         aiService
           .generateTitle(textToSend, accumulatedText, selectedProvider)
           .then((title) => {
-            if (title && currentConv) {
-              updateAIConversation(currentConv.id, { title });
+            if (title && currentFamily?.id && conv) {
+              familyAIService.updateFamilyAIConversation(currentFamily.id, conv.id, { title });
             }
           })
           .catch(() => {});
@@ -187,7 +233,7 @@ export const PersonalAIChat: React.FC = () => {
             timestamp: new Date().toISOString(),
             status: 'cancelled',
           };
-          await updateAIConversation(currentConv.id, {
+          await familyAIService.updateFamilyAIConversation(currentFamily.id, conv.id, {
             messages: [...updatedMessages, cancelMsg],
           });
         }
@@ -202,7 +248,7 @@ export const PersonalAIChat: React.FC = () => {
           status: 'failed',
           errorCode: 'GENERATION_ERROR',
         };
-        await updateAIConversation(currentConv.id, {
+        await familyAIService.updateFamilyAIConversation(currentFamily.id, conv.id, {
           messages: [...updatedMessages, errorMsg],
         });
       }
@@ -215,6 +261,7 @@ export const PersonalAIChat: React.FC = () => {
 
   const handleRetry = (msgIndex: number) => {
     if (!activeConversation) return;
+    // Find preceding user prompt
     const prevMsg = activeConversation.messages[msgIndex - 1];
     if (prevMsg && prevMsg.role === 'user') {
       handleSend(prevMsg.text);
@@ -228,100 +275,100 @@ export const PersonalAIChat: React.FC = () => {
   };
 
   const handleDeleteConversation = async (convId: string) => {
-    await deleteAIConversation(convId);
-    if (activeConversationId === convId) {
-      const remaining = aiConversations.filter((c) => c.id !== convId);
-      setActiveConversationId(remaining[0]?.id || null);
+    if (!currentFamily?.id) return;
+    await familyAIService.deleteFamilyAIConversation(currentFamily.id, convId, user || undefined);
+    if (activeConvId === convId) {
+      const remaining = conversations.filter((c) => c.id !== convId);
+      setActiveConvId(remaining[0]?.id || null);
     }
   };
 
-  const handleRename = async (e: React.FormEvent) => {
+  const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!renamingConv || !newTitle.trim()) return;
-    await updateAIConversation(renamingConv.id, { title: newTitle.trim() });
+    if (!renamingConv || !newTitle.trim() || !currentFamily?.id) return;
+    await familyAIService.updateFamilyAIConversation(currentFamily.id, renamingConv.id, {
+      title: newTitle.trim(),
+    });
     setRenamingConv(null);
     setNewTitle('');
   };
 
-  // Structured Data Questions Handlers (Exact calculation in app code)
-  const quickPrompts = [
+  const suggestedPrompts = [
     {
-      title: 'How much did I spend this month?',
+      title: 'What is planned this week?',
       handler: () => {
-        const total = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
-        const categories: Record<string, number> = {};
-        expenses.forEach((e) => {
-          categories[e.category] = (categories[e.category] || 0) + e.amount;
-        });
-
+        const eventContext: AIContextPayload = {
+          type: 'events_summary',
+          title: 'Scheduled Family Events',
+          content: familyEvents
+            .map((e) => `- ${e.title} (${e.startDate} at ${e.location || 'Home'})`)
+            .join('\n') || 'No scheduled events found.',
+        };
+        handleSend('What family events and plans are coming up this week?', [eventContext]);
+      },
+    },
+    {
+      title: 'Which bills are due?',
+      handler: () => {
+        const pendingBills = familyBills.filter((b) => !b.isPaid);
+        const total = pendingBills.reduce((acc, b) => acc + (b.amount || 0), 0);
+        const billContext: AIContextPayload = {
+          type: 'bills_summary',
+          title: 'Pending Household Bills',
+          content: `Pending Bills Total: $${total.toFixed(2)} USD.\n` +
+            pendingBills.map((b) => `- ${b.title}: $${b.amount} (Due: ${b.dueDate})`).join('\n'),
+        };
+        handleSend('Which family bills are currently due or pending?', [billContext]);
+      },
+    },
+    {
+      title: 'Summarize family expenses',
+      handler: () => {
+        const total = familyExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
         const expenseContext: AIContextPayload = {
-          type: 'personal_expense_summary',
-          title: 'Verified Personal Expenses',
-          content: `Verified Database Records: Total $${total.toFixed(2)} USD across ${expenses.length} personal expenses.\n` +
-            `Category Breakdown: ${Object.entries(categories).map(([k, v]) => `${k}: $${v.toFixed(2)}`).join(', ')}\n` +
-            `Items: ${expenses.map((e) => `${e.title}: $${e.amount} (${e.date})`).join('; ')}`,
+          type: 'expenses_summary',
+          title: 'Family Expenses Records',
+          content: `Total Recorded Expenses: $${total.toFixed(2)} USD.\nRecent: ${familyExpenses
+            .slice(0, 10)
+            .map((e) => `${e.title}: $${e.amount} (${e.category})`)
+            .join(', ')}`,
         };
-        handleSend('How much did I spend this month, and what are my highest expense categories?', [expenseContext]);
+        handleSend('How much did our household spend recently, and across what categories?', [expenseContext]);
       },
     },
     {
-      title: 'Summarize my week',
+      title: 'Summarize urgent family notes',
       handler: () => {
-        const planContext: AIContextPayload = {
-          type: 'personal_plans_summary',
-          title: 'Personal Plans & Tasks',
-          content: `Plans: ${plans.map((p) => `- ${p.title} (Start: ${p.startDate || 'TBD'})`).join('\n') || 'None'}\n` +
-            `Tasks: ${schoolWork.map((t) => `- ${t.title} [Priority: ${t.priority || 'Normal'}, Date: ${t.date || 'TBD'}]`).join('\n') || 'None'}`,
-        };
-        handleSend('Can you summarize my personal plans, priorities, and tasks for this week?', [planContext]);
-      },
-    },
-    {
-      title: 'Summarize my personal notes',
-      handler: () => {
+        const urgentNotes = familyNotes.filter((n) => n.isUrgent);
         const noteContext: AIContextPayload = {
-          type: 'personal_notes_summary',
-          title: 'Private Personal Notes',
-          content: notes
-            .map((n) => `--- Note: ${n.title} (${n.category || 'General'}) ---\n${n.content || ''}`)
-            .join('\n\n') || 'No personal notes recorded.',
+          type: 'urgent_notes',
+          title: 'Urgent Family Notes',
+          content: urgentNotes
+            .map((n) => `Title: ${n.title}\nContent: ${n.content || ''}`)
+            .join('\n---\n') || 'No urgent notes found.',
         };
-        handleSend('Provide a concise, organized summary of my personal notes and thoughts.', [noteContext]);
-      },
-    },
-    {
-      title: 'Show my school/work tasks',
-      handler: () => {
-        const pendingTasks = schoolWork.filter((t) => t.status !== 'completed');
-        const taskContext: AIContextPayload = {
-          type: 'personal_tasks',
-          title: 'School & Work Tasks',
-          content: pendingTasks
-            .map((t) => `- ${t.title} (Type: ${t.type}, Priority: ${t.priority}, Date: ${t.date || 'No date set'})`)
-            .join('\n') || 'All tasks completed!',
-        };
-        handleSend('What school or work tasks and deadlines do I have coming up?', [taskContext]);
+        handleSend('Summarize our urgent household notes and priority action items.', [noteContext]);
       },
     },
   ];
 
-  const filteredConversations = aiConversations.filter((c) =>
-    c.title.toLowerCase().includes(conversationSearch.toLowerCase())
+  const filteredConversations = conversations.filter((c) =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-[740px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-      {/* ---------------- Conversations Sidebar ---------------- */}
-      <aside className="w-full md:w-68 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col shrink-0">
+    <div className="flex flex-col md:flex-row h-[760px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+      {/* ---------------- Sidebar: Conversations ---------------- */}
+      <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col shrink-0">
         <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-center font-bold">
-                <Lock className="w-4 h-4 text-emerald-400" />
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100">Personal AI</h3>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">100% Private</span>
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100">Family AI</h3>
+                <span className="text-[10px] text-slate-500">Authorized Household AI</span>
               </div>
             </div>
             <button
@@ -339,28 +386,27 @@ export const PersonalAIChat: React.FC = () => {
             className="w-full justify-center"
             icon={<Plus className="w-4 h-4" />}
           >
-            New Private Chat
+            New Family Chat
           </Button>
 
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search private chats..."
-              value={conversationSearch}
-              onChange={(e) => setConversationSearch(e.target.value)}
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         </div>
 
-        {/* Conversation List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {filteredConversations.length === 0 ? (
             <div className="text-center py-10 px-4">
               <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">No private chats</p>
-              <p className="text-[11px] text-slate-400 mt-1">Start a conversation to plan privately with AI.</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">No conversations yet</p>
+              <p className="text-[11px] text-slate-400 mt-1">Start a new chat to coordinate household plans with AI.</p>
             </div>
           ) : (
             filteredConversations.map((c) => {
@@ -368,11 +414,11 @@ export const PersonalAIChat: React.FC = () => {
               return (
                 <div
                   key={c.id}
-                  onClick={() => setActiveConversationId(c.id)}
+                  onClick={() => setActiveConvId(c.id)}
                   className={`group flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-all ${
                     active
-                      ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 shadow-xs'
-                      : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/40 border border-transparent'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-900/60 shadow-xs'
+                      : 'hover:bg-slate-100/80 dark:hover:bg-slate-800/40 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -418,27 +464,25 @@ export const PersonalAIChat: React.FC = () => {
           )}
         </div>
 
+        {/* Provider badge */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/40 flex items-center justify-between text-[11px] text-slate-500">
           <span>Provider: <strong className="uppercase font-semibold text-slate-700 dark:text-slate-300">{selectedProvider}</strong></span>
           <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-            <ShieldCheck className="w-3.5 h-3.5" /> Private
+            <ShieldCheck className="w-3.5 h-3.5" /> Read-Only
           </span>
         </div>
       </aside>
 
       {/* ---------------- Main Chat Area ---------------- */}
       <main className="flex-1 flex flex-col bg-white dark:bg-slate-900 min-w-0">
-        {/* Header */}
+        {/* Chat header */}
         <header className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
           <div>
-            <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              {activeConversation ? activeConversation.title : 'Private AI'}
-              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
-                Private
-              </span>
+            <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+              {activeConversation ? activeConversation.title : 'Family Assistant'}
             </h2>
             <p className="text-[10px] text-slate-500">
-              Ask anything about your private plans, notes, expenses, school/work, or selected files.
+              Ask about your family's authorized plans, bills, notes, members, and documents.
             </p>
           </div>
 
@@ -454,7 +498,7 @@ export const PersonalAIChat: React.FC = () => {
           </div>
         </header>
 
-        {/* Message feed */}
+        {/* Messages Stream */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {(!activeConversation || activeConversation.messages.length === 0) && (
             <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-4">
@@ -463,25 +507,25 @@ export const PersonalAIChat: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Welcome to Personal AI
+                  Welcome to Family AI
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Ask anything about your private plans, notes, expenses, school/work, or selected files.
+                  Ask about your family's authorized plans, bills, notes, members, and documents.
                 </p>
               </div>
 
               {/* Quick suggestions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">
-                {quickPrompts.map((qp, idx) => (
+                {suggestedPrompts.map((sp, idx) => (
                   <button
                     key={idx}
-                    onClick={qp.handler}
+                    onClick={sp.handler}
                     className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-left transition-all group"
                   >
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                      {qp.title}
+                      {sp.title}
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Calculated from stored records</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Click to query authorized data</div>
                   </button>
                 ))}
               </div>
@@ -506,6 +550,7 @@ export const PersonalAIChat: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5 flex-1 min-w-0">
+                  {/* Context Badges on message */}
                   {msg.contextBadges && msg.contextBadges.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-1">
                       {msg.contextBadges.map((cb, cbIdx) => (
@@ -535,6 +580,7 @@ export const PersonalAIChat: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Actions row: Copy, Retry, Provider pill */}
                   {!isUser && (
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 pl-1">
                       <button
@@ -570,6 +616,7 @@ export const PersonalAIChat: React.FC = () => {
             );
           })}
 
+          {/* Live streaming bubble */}
           {isGenerating && streamingText && (
             <div className="flex gap-3 max-w-[88%] mr-auto">
               <div className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-indigo-500 flex items-center justify-center shrink-0">
@@ -582,6 +629,7 @@ export const PersonalAIChat: React.FC = () => {
             </div>
           )}
 
+          {/* Typing placeholder before stream */}
           {isGenerating && !streamingText && (
             <div className="flex gap-3 max-w-[85%] mr-auto">
               <div className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-indigo-500 flex items-center justify-center shrink-0">
@@ -589,7 +637,7 @@ export const PersonalAIChat: React.FC = () => {
               </div>
               <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-400 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-                <span>Thinking privately...</span>
+                <span>AI is typing...</span>
               </div>
             </div>
           )}
@@ -622,7 +670,7 @@ export const PersonalAIChat: React.FC = () => {
           </div>
         )}
 
-        {/* Composer */}
+        {/* Input Composer */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <form
             onSubmit={(e) => {
@@ -635,7 +683,7 @@ export const PersonalAIChat: React.FC = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything privately..."
+              placeholder="Ask about family plans, bills, notes, or schedules..."
               disabled={isGenerating}
               className="flex-1 text-xs p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
             />
@@ -662,8 +710,9 @@ export const PersonalAIChat: React.FC = () => {
             )}
           </form>
 
+          {/* Safe Disclaimer footer */}
           <div className="text-[10px] text-slate-400 text-center mt-2">
-            Personal AI operates in a private sandbox and never shares data with other family members.
+            FamilyHub AI is informational only and does not replace professional medical or legal advice.
           </div>
         </div>
       </main>
@@ -672,20 +721,16 @@ export const PersonalAIChat: React.FC = () => {
       <ContextPickerModal
         isOpen={isContextPickerOpen}
         onClose={() => setIsContextPickerOpen(false)}
-        mode="personal"
+        mode="family"
         selectedContext={selectedContext}
         onSelectContext={setSelectedContext}
-        personalData={{
-          notes: notes.map((n) => ({ id: n.id, title: n.title, content: n.content })),
-          expenses: expenses.map((e) => ({
-            id: e.id,
-            title: e.title,
-            amount: e.amount,
-            category: e.category,
-            date: e.date,
-          })),
-          plans: plans.map((p) => ({ id: p.id, title: p.title, targetDate: p.startDate })),
-          tasks: schoolWork.map((t) => ({ id: t.id, title: t.title, priority: t.priority, dueDate: t.date })),
+        familyData={{
+          members: members.map((m) => ({ id: m.id, name: m.userName || 'Member', role: m.role })),
+          children: familyChildren,
+          bills: familyBills,
+          events: familyEvents,
+          expenses: familyExpenses,
+          notes: familyNotes,
         }}
       />
 
@@ -698,8 +743,8 @@ export const PersonalAIChat: React.FC = () => {
       />
 
       {/* Rename Chat Modal */}
-      <Modal isOpen={!!renamingConv} onClose={() => setRenamingConv(null)} title="Rename Private Chat" maxWidth="sm">
-        <form onSubmit={handleRename} className="space-y-4">
+      <Modal isOpen={!!renamingConv} onClose={() => setRenamingConv(null)} title="Rename Family Chat" maxWidth="sm">
+        <form onSubmit={handleRenameSubmit} className="space-y-4">
           <Input
             label="Chat Title"
             value={newTitle}

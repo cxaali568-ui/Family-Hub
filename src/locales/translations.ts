@@ -15,10 +15,13 @@ export interface Translations {
   nav: {
     chat: string;
     family: string;
+    children?: string;
     expenses: string;
+    bills?: string;
     money: string;
     medical: string;
     plans: string;
+    planner?: string;
     photos: string;
     documents: string;
     notes: string;
@@ -145,10 +148,13 @@ export const translations: Record<Language, Translations> = {
     nav: {
       chat: "Chat",
       family: "Members",
+      children: "Children",
       expenses: "Expenses",
+      bills: "Bills",
       money: "Money",
       medical: "Medical",
-      plans: "Plans",
+      plans: "Planner",
+      planner: "Planner",
       photos: "Photos",
       documents: "Documents",
       notes: "Notes",
@@ -273,10 +279,13 @@ export const translations: Record<Language, Translations> = {
     nav: {
       chat: "گفتگو (چیٹ)",
       family: "خاندان",
+      children: "بچے اور اسکول",
       expenses: "اخراجات",
+      bills: "بلز",
       money: "مالیات و اخراجات",
       medical: "طبی معلومات",
-      plans: "منصوبے",
+      plans: "پلانر و کیلنڈر",
+      planner: "پلانر و کیلنڈر",
       photos: "تصاویر",
       documents: "دستاویزات",
       notes: "نوٹس",

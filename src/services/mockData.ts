@@ -302,6 +302,7 @@ export const INITIAL_PERSONAL_NOTES: PersonalNote[] = [
     title: 'Private Journal: Work & Family Reflection',
     content: 'Feeling grateful for the kids settling into their autumn semester. Need to ensure I keep my weekends dedicated to family time and morning walks.',
     category: 'journal',
+    createdAt: '2026-09-27T21:00:00.000Z',
     updatedAt: '2026-09-27T21:00:00.000Z',
   },
   {
@@ -310,6 +311,7 @@ export const INITIAL_PERSONAL_NOTES: PersonalNote[] = [
     title: 'Surprise Vacation Ideas for Family',
     content: 'Looking at coastal cabins near Big Sur or Lake Tahoe for late spring. Check availability with flexible cancellation.',
     category: 'private_idea',
+    createdAt: '2026-09-15T14:00:00.000Z',
     updatedAt: '2026-09-15T14:00:00.000Z',
   },
 ];

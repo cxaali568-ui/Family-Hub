@@ -9,7 +9,9 @@ import { NotificationDrawer } from '../notifications/NotificationDrawer';
 import {
   MessageSquare,
   Users,
+  GraduationCap,
   DollarSign,
+  CreditCard,
   HeartPulse,
   Calendar,
   Image as ImageIcon,
@@ -26,6 +28,7 @@ import {
   Home,
   LogOut,
   Check,
+  Sparkles,
 } from 'lucide-react';
 import { FamilyNavRoute } from '../../types';
 
@@ -50,8 +53,21 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
 
-  // Exact navigation order specified in requirements:
-  // 1. Chat, 2. Family, 3. Money, 4. Medical, 5. Plans, 6. Photos, 7. Documents, 8. Notes, 9. Urgent, 10. Notifications, 11. My Personal, 12. Settings
+  // Exact navigation order specified in Step 10:
+  // 1. Chat (MUST remain FIRST)
+  // 2. Members
+  // 3. Children
+  // 4. Medical & Care
+  // 5. Expenses
+  // 6. Bills
+  // 7. Notes
+  // 8. Planner
+  // 9. Photos
+  // 10. Documents
+  // 11. Urgent
+  // 12. Notifications
+  // 13. My Personal
+  // 14. Settings
   const navItems: {
     id: FamilyNavRoute;
     label: string;
@@ -62,12 +78,14 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   }[] = [
     { id: 'chat', label: t.nav.chat, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'family', label: t.nav.family, icon: <Users className="w-4 h-4" /> },
-    { id: 'expenses', label: t.nav.expenses || t.nav.money, icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'children', label: 'Children', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'medical', label: t.nav.medical, icon: <HeartPulse className="w-4 h-4" /> },
-    { id: 'plans', label: t.nav.plans, icon: <Calendar className="w-4 h-4" /> },
+    { id: 'expenses', label: t.nav.expenses || t.nav.money, icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'bills', label: 'Bills', icon: <CreditCard className="w-4 h-4" /> },
+    { id: 'notes', label: t.nav.notes, icon: <StickyNote className="w-4 h-4" /> },
+    { id: 'planner', label: 'Planner', icon: <Calendar className="w-4 h-4" /> },
     { id: 'photos', label: t.nav.photos, icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'documents', label: t.nav.documents, icon: <FileText className="w-4 h-4" /> },
-    { id: 'notes', label: t.nav.notes, icon: <StickyNote className="w-4 h-4" /> },
     {
       id: 'urgent',
       label: t.nav.urgent,
@@ -80,6 +98,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
       label: t.nav.notifications,
       icon: <Bell className="w-4 h-4" />,
       badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    {
+      id: 'ai',
+      label: 'Family AI',
+      icon: <Sparkles className="w-4 h-4 text-indigo-500" />,
     },
     {
       id: 'personal',

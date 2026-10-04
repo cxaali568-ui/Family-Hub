@@ -806,6 +806,160 @@ export interface FamilyPlan {
 }
 
 // -------------------------------------------------------------
+// STEP 10: FAMILY PLANNER, CALENDAR, EVENTS & REMINDERS
+// -------------------------------------------------------------
+
+export type EventCategoryType =
+  | 'Family'
+  | 'Birthday'
+  | 'Anniversary'
+  | 'School'
+  | 'Medical'
+  | 'Appointment'
+  | 'Travel'
+  | 'Home'
+  | 'Work'
+  | 'Holiday'
+  | 'Other';
+
+export type EventReminderOption =
+  | 'none'
+  | 'at_time'
+  | '5m'
+  | '10m'
+  | '30m'
+  | '1h'
+  | '1d'
+  | '2d'
+  | '1w';
+
+export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurrenceRule {
+  frequency: RecurrenceFrequency;
+  interval?: number; // e.g., 1 for every 1 week
+  daysOfWeek?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
+  endDate?: string; // YYYY-MM-DD
+  occurrencesCount?: number;
+  exceptions?: string[]; // YYYY-MM-DD dates skipped or modified
+}
+
+export interface FamilyEvent {
+  id: string;
+  familyId: string;
+  title: string;
+  description?: string;
+  startDate: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm (24h)
+  endDate?: string; // YYYY-MM-DD
+  endTime?: string; // HH:mm
+  allDay: boolean;
+  timezone?: string;
+  category: string;
+  location?: string;
+  createdBy: string;
+  createdByName?: string;
+  assignedMemberIds: string[];
+  visibleTo?: 'entire_family' | 'selected_members';
+  visibleMemberIds?: string[];
+  linkedEntityType?: 'birthday' | 'anniversary' | 'school' | 'medical' | 'bill' | 'note' | 'urgent';
+  linkedEntityId?: string;
+  reminder: EventReminderOption;
+  recurrence?: RecurrenceRule;
+  seriesId?: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  notes?: string;
+  attachments?: Array<{
+    id: string;
+    name: string;
+    url: string;
+    size?: number;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+}
+
+export interface FamilyReminder {
+  id: string;
+  familyId: string;
+  title: string;
+  description?: string;
+  dueDate: string; // YYYY-MM-DD
+  dueTime?: string; // HH:mm
+  assignedMemberIds: string[];
+  status: 'pending' | 'completed' | 'cancelled';
+  reminder: EventReminderOption;
+  repeat?: RecurrenceFrequency;
+  notes?: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  completedBy?: string;
+}
+
+export type CalendarItemSource =
+  | 'event'
+  | 'reminder'
+  | 'birthday'
+  | 'anniversary'
+  | 'medical'
+  | 'bill'
+  | 'note'
+  | 'urgent'
+  | 'school';
+
+export interface UnifiedCalendarItem {
+  id: string;
+  source: CalendarItemSource;
+  title: string;
+  description?: string;
+  startDate: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endDate?: string;
+  endTime?: string;
+  allDay: boolean;
+  category: string;
+  location?: string;
+  assignedMemberIds?: string[];
+  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'overdue' | 'paid';
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+  color: string;
+  rawEntity?: any;
+  isVirtual?: boolean;
+  isRecurringOccurrence?: boolean;
+  occurrenceDate?: string;
+  createdByName?: string;
+  createdBy?: string;
+}
+
+export interface CalendarSettings {
+  showBirthdays: boolean;
+  showBills: boolean;
+  showNotes: boolean;
+  showUrgentNeeds: boolean;
+  showSchool: boolean;
+  showMedical: boolean;
+  showReminders: boolean;
+  defaultView: 'month' | 'week' | 'day' | 'agenda';
+  weekStartsOn: 0 | 1;
+}
+
+export interface CalendarFilter {
+  category: string;
+  source: string;
+  assignedMemberId?: string;
+  searchQuery: string;
+  status: string;
+  upcomingDays: 7 | 14 | 30;
+}
+
+
+// -------------------------------------------------------------
 // STEP 8: FAMILY NOTES + IMPORTANT NOTES + URGENT NEEDS + FAMILY INFORMATION CENTER
 // -------------------------------------------------------------
 
@@ -1058,7 +1212,8 @@ export interface PhotosSummary {
 }
 
 // -------------------------------------------------------------
-// PERSONAL SPACE - STRICTLY PRIVATE PER USER
+// -------------------------------------------------------------
+// STEP 11: PERSONAL SPACE - STRICTLY PRIVATE PER USER
 // -------------------------------------------------------------
 export interface PersonalProfile {
   ownerId: string;
@@ -1067,13 +1222,67 @@ export interface PersonalProfile {
   autoLockMinutes: number;
 }
 
+export type PersonalExpenseCategory =
+  | 'Food'
+  | 'Transport'
+  | 'Shopping'
+  | 'Education'
+  | 'Medical'
+  | 'Bills'
+  | 'Travel'
+  | 'Work'
+  | 'Home'
+  | 'Personal'
+  | 'Other'
+  | string;
+
 export interface PersonalExpense {
   id: string;
-  ownerId: string; // Boundary: strictly current user
+  ownerId: string; // Boundary: strictly current user UID
   title: string;
   amount: number;
-  category: 'Personal' | 'Work' | 'Tech' | 'Subscription' | 'Dining' | 'Other';
-  date: string;
+  category: PersonalExpenseCategory;
+  date: string; // YYYY-MM-DD
+  description?: string;
+  paymentMethod?: 'Cash' | 'Card' | 'Bank Transfer' | 'Online/Wallet' | 'Other';
+  notes?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  createdAt?: string;
+}
+
+export type SchoolWorkType =
+  | 'Exam'
+  | 'Assignment'
+  | 'Meeting'
+  | 'Project'
+  | 'Deadline'
+  | 'Office Task'
+  | 'Interview'
+  | 'Class'
+  | 'Study Session';
+
+export type SchoolWorkStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type SchoolWorkPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface PersonalSchoolWorkItem {
+  id: string;
+  ownerId: string;
+  domain: 'school' | 'work' | 'both';
+  title: string;
+  type: SchoolWorkType;
+  description?: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  location?: string;
+  status: SchoolWorkStatus;
+  priority: SchoolWorkPriority;
+  reminder?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  notes?: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface PersonalTask {
@@ -1091,31 +1300,175 @@ export interface PersonalNote {
   ownerId: string;
   title: string;
   content: string;
-  category: 'journal' | 'private_idea' | 'study_notes' | 'passwords';
+  category: 'Ideas' | 'Private Notes' | 'Study Notes' | 'Work Notes' | 'Important' | 'Journal' | 'Other' | string;
+  tags?: string[];
+  isPinned?: boolean;
+  isArchived?: boolean;
+  createdAt: string;
   updatedAt: string;
+}
+
+export interface PersonalDailyNeed {
+  id: string;
+  ownerId: string;
+  title: string;
+  description?: string;
+  dueDate: string; // YYYY-MM-DD
+  dueTime?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'pending' | 'completed' | 'cancelled';
+  assignedTo: string; // Always ownerId
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface PersonalPlan {
+  id: string;
+  ownerId: string;
+  title: string;
+  description?: string;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string;
+  status: 'planned' | 'active' | 'completed' | 'cancelled';
+  progress: number; // 0 - 100
+  notes?: string;
+  category?: 'Study' | 'Travel' | 'Work' | 'Fitness' | 'Monthly' | 'Savings' | 'Other';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalReminder {
+  id: string;
+  ownerId: string;
+  title: string;
+  description?: string;
+  date: string; // YYYY-MM-DD
+  time?: string;
+  repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  reminder: string;
+  status: 'pending' | 'completed';
+  createdAt: string;
+}
+
+export interface PersonalFile {
+  id: string;
+  ownerId: string;
+  name: string;
+  fileType: string;
+  size: number;
+  storagePath: string;
+  url: string;
+  category?: 'documents' | 'receipts' | 'id_cards' | 'certificates' | 'other';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalPhoto {
+  id: string;
+  ownerId: string;
+  albumId?: string;
+  albumName?: string;
+  url: string;
+  storagePath: string;
+  name: string;
+  size: number;
+  caption?: string;
+  createdAt: string;
+}
+
+export interface PersonalAlbum {
+  id: string;
+  ownerId: string;
+  title: string;
+  description?: string;
+  coverUrl?: string;
+  photoCount: number;
+  createdAt: string;
+}
+
+export type AIMessageStatus = 'sending' | 'generating' | 'completed' | 'failed' | 'cancelled';
+
+export interface AIMessageContext {
+  type: 'note' | 'expense' | 'bill' | 'event' | 'medical' | 'child' | 'member' | 'document' | 'personal_note' | 'personal_expense' | 'personal_plan' | 'summary';
+  id?: string;
+  title: string;
+  snippet?: string;
 }
 
 export interface AIMessage {
   id: string;
+  conversationId?: string;
   role: 'user' | 'model';
+  content?: string;
   text: string;
+  provider?: 'gemini' | 'openai' | 'auto';
+  model?: string;
+  createdAt?: string;
   timestamp: string;
+  status?: AIMessageStatus;
+  contextBadges?: AIMessageContext[];
+  attachments?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    url?: string;
+    size?: number;
+  }>;
+  tokenUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+  errorCode?: string;
+}
+
+export interface PersonalAIConversation {
+  id: string;
+  ownerId: string;
+  title: string;
+  messages: AIMessage[];
+  provider?: 'gemini' | 'openai' | 'auto';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FamilyAIConversation {
+  id: string;
+  familyId: string;
+  createdBy: string;
+  createdByName?: string;
+  title: string;
+  messages: AIMessage[];
+  provider?: 'gemini' | 'openai' | 'auto';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AISettings {
+  defaultProvider: 'auto' | 'gemini' | 'openai';
+  enablePersonalAI: boolean;
+  enableFamilyAI: boolean;
+  responseStyle: 'concise' | 'detailed' | 'warm';
+  saveHistory: boolean;
 }
 
 // Navigation structure
 export type FamilyNavRoute =
   | 'chat'
   | 'family'
+  | 'children'
   | 'expenses'
   | 'bills'
   | 'money'
   | 'medical'
+  | 'planner'
   | 'plans'
   | 'photos'
   | 'documents'
   | 'notes'
   | 'urgent'
   | 'notifications'
+  | 'ai'
   | 'personal'
   | 'settings';
 
@@ -1128,4 +1481,7 @@ export type PersonalNavRoute =
   | 'documents'
   | 'notebook'
   | 'daily_needs'
-  | 'plans';
+  | 'plans'
+  | 'reminders'
+  | 'reports'
+  | 'settings';
