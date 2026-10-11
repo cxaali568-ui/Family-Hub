@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Message, Attachment } from '../../types';
 import { Avatar } from '../ui/Avatar';
+import { useToast } from '../../context/ToastContext';
 import { formatMessageTimestamp } from '../../utils/dateUtils';
 import {
   Reply,
@@ -57,6 +58,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { showError } = useToast();
 
   const isDeleted = Boolean(message.deletedAt);
   const hasReactions = message.reactions && Object.keys(message.reactions).length > 0;
@@ -71,7 +73,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       await onEditMessage(message.id, editText.trim());
       setIsEditing(false);
     } catch (err: any) {
-      alert(err?.message || 'Failed to edit message.');
+      showError(err?.message || 'Failed to edit message.');
     } finally {
       setEditLoading(false);
     }
@@ -83,7 +85,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       await onDeleteMessage(message.id);
       setShowDeleteConfirm(false);
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete message.');
+      showError(err?.message || 'Failed to delete message.');
     } finally {
       setDeleteLoading(false);
     }

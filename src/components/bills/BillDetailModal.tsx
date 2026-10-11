@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { useToast } from '../../context/ToastContext';
 import { Bill, BillPayment, BillDocument, User } from '../../types';
 import { billPaymentService } from '../../services/billPaymentService';
 import { billDocumentService } from '../../services/billDocumentService';
@@ -58,6 +59,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
   const [revealAccountNumber, setRevealAccountNumber] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const { showError } = useToast();
 
   // Document Upload State
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -98,7 +100,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
       setShowCancelConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Could not cancel bill.');
+      showError(err?.message || 'Could not cancel bill.');
     } finally {
       setCancelLoading(false);
     }
@@ -122,7 +124,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
       setDocFile(null);
       setDocTitle('');
     } catch (err: any) {
-      alert(err?.message || 'Could not upload document.');
+      showError(err?.message || 'Could not upload document.');
     } finally {
       setDocLoading(false);
     }

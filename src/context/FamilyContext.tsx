@@ -15,7 +15,6 @@ import {
 } from '../types';
 import { familyService } from '../services/familyService';
 import { useAuth } from './AuthContext';
-import { INITIAL_EXPENSES, INITIAL_BILLS, INITIAL_MEDICAL, INITIAL_PLANS, INITIAL_NOTES } from '../services/mockData';
 
 export interface FamilyPermissions {
   isOwner: boolean;
@@ -75,20 +74,31 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingFamilies, setLoadingFamilies] = useState<boolean>(true);
 
-  // PRIMARY USER EXPERIENCE REQUIREMENT: Default route is 'chat', with support for direct URLs e.g. /family/expenses
-  const [currentRoute, setCurrentRouteState] = useState<FamilyNavRoute>(() => {
+  const parseCurrentPath = (): FamilyNavRoute => {
     try {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.includes('/expenses') || hash.includes('expenses') || path.includes('/money') || hash.includes('money')) return 'expenses';
-      if (path.includes('/family') || hash.includes('family') || path.includes('/members')) return 'family';
-      if (path.includes('/medical') || hash.includes('medical')) return 'medical';
-      if (path.includes('/plans') || hash.includes('plans')) return 'plans';
-      if (path.includes('/notes') || hash.includes('notes')) return 'notes';
-      if (path.includes('/personal') || hash.includes('personal')) return 'personal';
+      const target = path + hash;
+
+      if (target.includes('/expenses') || target.includes('/money')) return 'expenses';
+      if (target.includes('/bills')) return 'bills';
+      if (target.includes('/medical')) return 'medical';
+      if (target.includes('/planner') || target.includes('/plans')) return 'planner';
+      if (target.includes('/photos')) return 'photos';
+      if (target.includes('/documents')) return 'documents';
+      if (target.includes('/notes')) return 'notes';
+      if (target.includes('/urgent')) return 'urgent';
+      if (target.includes('/ai')) return 'ai';
+      if (target.includes('/personal')) return 'personal';
+      if (target.includes('/settings')) return 'settings';
+      if (target.includes('/family') || target.includes('/members')) return 'family';
+      if (target.includes('/children')) return 'children';
     } catch {}
     return 'chat';
-  });
+  };
+
+  // PRIMARY USER EXPERIENCE REQUIREMENT: Default route is 'chat', with support for direct URLs e.g. /family/expenses
+  const [currentRoute, setCurrentRouteState] = useState<FamilyNavRoute>(parseCurrentPath);
 
   const setCurrentRoute = (route: FamilyNavRoute) => {
     setCurrentRouteState(route);
@@ -107,29 +117,19 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     const handlePopState = () => {
-      try {
-        const path = window.location.pathname.toLowerCase();
-        const hash = window.location.hash.toLowerCase();
-        if (path.includes('/expenses') || hash.includes('expenses') || path.includes('/money') || hash.includes('money')) setCurrentRouteState('expenses');
-        else if (path.includes('/family') || hash.includes('family') || path.includes('/members')) setCurrentRouteState('family');
-        else if (path.includes('/medical') || hash.includes('medical')) setCurrentRouteState('medical');
-        else if (path.includes('/plans') || hash.includes('plans')) setCurrentRouteState('plans');
-        else if (path.includes('/notes') || hash.includes('notes')) setCurrentRouteState('notes');
-        else if (path.includes('/personal') || hash.includes('personal')) setCurrentRouteState('personal');
-        else if (path === '/' || hash.includes('chat')) setCurrentRouteState('chat');
-      } catch {}
+      setCurrentRouteState(parseCurrentPath());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Step 1 Household modules state
-  const [expenses, setExpenses] = useState<FamilyExpense[]>(INITIAL_EXPENSES);
-  const [bills, setBills] = useState<FamilyBill[]>(INITIAL_BILLS);
-  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>(INITIAL_MEDICAL);
+  // Step 1 Household modules state (defaults to empty database)
+  const [expenses, setExpenses] = useState<FamilyExpense[]>([]);
+  const [bills, setBills] = useState<FamilyBill[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [urgentItems, setUrgentItems] = useState<UrgentItem[]>([]);
-  const [plans, setPlans] = useState<FamilyPlan[]>(INITIAL_PLANS);
-  const [notes, setNotes] = useState<FamilyNote[]>(INITIAL_NOTES);
+  const [plans, setPlans] = useState<FamilyPlan[]>([]);
+  const [notes, setNotes] = useState<FamilyNote[]>([]);
 
   // Load user families from Firestore on user sign in or change
   const refreshFamilyData = async () => {

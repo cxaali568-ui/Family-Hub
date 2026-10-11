@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFamily } from '../../context/FamilyContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { chatService } from '../../services/chatService';
 import { Message, Attachment } from '../../types';
 import { MessageBubble } from './MessageBubble';
@@ -30,6 +31,7 @@ export const FamilyChatView: React.FC = () => {
   const { user } = useAuth();
   const { family, members, familyPermissions, setCurrentRoute, hasNoFamily, loadingFamilies } = useFamily();
   const { t } = useLanguage();
+  const { showError } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -139,7 +141,7 @@ export const FamilyChatView: React.FC = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (err: any) {
       console.error('Failed to send message:', err);
-      alert(err?.message || 'Failed to send message. Please try again.');
+      showError(err?.message || 'Failed to send message. Please try again.');
     }
   };
 

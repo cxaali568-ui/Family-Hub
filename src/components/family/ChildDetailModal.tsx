@@ -5,6 +5,7 @@ import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
 import { Input } from '../ui/Input';
 import { childService } from '../../services/childService';
+import { useToast } from '../../context/ToastContext';
 import {
   Child,
   ChildGuardian,
@@ -69,6 +70,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
   const [feePayer, setFeePayer] = useState(currentUser.name);
   const [feeNotes, setFeeNotes] = useState('');
   const [feeLoading, setFeeLoading] = useState(false);
+  const { showError } = useToast();
 
   // Add Guardian modal
   const [isAddGuardianOpen, setIsAddGuardianOpen] = useState(false);
@@ -153,7 +155,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
       setIsAddFeeModalOpen(false);
       setFeeNotes('');
     } catch (err: any) {
-      alert(err?.message || 'Could not record fee payment.');
+      showError(err?.message || 'Could not record fee payment.');
     } finally {
       setFeeLoading(false);
     }
@@ -174,7 +176,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
       setGuardianName('');
       setGuardianPhone('');
     } catch (err: any) {
-      alert(err?.message || 'Could not add guardian.');
+      showError(err?.message || 'Could not add guardian.');
     } finally {
       setGuardianLoading(false);
     }
@@ -183,7 +185,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
   const handleUploadDocSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      alert('Please select a document or photo file.');
+      showError('Please select a document or photo file.');
       return;
     }
     setDocUploading(true);
@@ -200,7 +202,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
       setSelectedFile(null);
       setDocTitle('');
     } catch (err: any) {
-      alert(err?.message || 'Could not upload document.');
+      showError(err?.message || 'Could not upload document.');
     } finally {
       setDocUploading(false);
     }
@@ -213,7 +215,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
       setShowDeleteConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete child record.');
+      showError(err?.message || 'Failed to delete child record.');
     } finally {
       setDeleteLoading(false);
     }

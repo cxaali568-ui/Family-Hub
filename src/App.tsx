@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { FamilyProvider, useFamily } from './context/FamilyContext';
 import { PersonalProvider } from './context/PersonalContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -124,9 +125,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ToastProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

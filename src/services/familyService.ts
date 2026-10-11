@@ -95,55 +95,67 @@ class FamilyService {
 
     // 3. Create default general chat room: chatRooms/{familyId}_general
     const chatRoomId = `${familyId}_general`;
-    const chatRoomData: ChatRoom = {
-      id: chatRoomId,
-      familyId,
-      type: 'family',
-      name: `${params.name.trim()} Chat`,
-      createdAt: now,
-      createdBy: params.creator.id,
-      isGeneral: true,
-    };
-    await setDoc(doc(db, 'chatRooms', chatRoomId), chatRoomData);
+    try {
+      const chatRoomData: ChatRoom = {
+        id: chatRoomId,
+        familyId,
+        type: 'family',
+        name: `${params.name.trim()} Chat`,
+        createdAt: now,
+        createdBy: params.creator.id,
+        isGeneral: true,
+      };
+      await setDoc(doc(db, 'chatRooms', chatRoomId), chatRoomData);
 
-    // 4. Create chat member relationship
-    const chatMemberId = `${chatRoomId}_${params.creator.id}`;
-    const chatMemberData: ChatMember = {
-      id: chatMemberId,
-      chatRoomId,
-      familyId,
-      userId: params.creator.id,
-      joinedAt: now,
-      status: 'active',
-    };
-    await setDoc(doc(db, 'chatMembers', chatMemberId), chatMemberData);
+      // 4. Create chat member relationship
+      const chatMemberId = `${chatRoomId}_${params.creator.id}`;
+      const chatMemberData: ChatMember = {
+        id: chatMemberId,
+        chatRoomId,
+        familyId,
+        userId: params.creator.id,
+        joinedAt: now,
+        status: 'active',
+      };
+      await setDoc(doc(db, 'chatMembers', chatMemberId), chatMemberData);
+    } catch (err) {
+      console.warn("Could not create initial chat room or chat member:", err);
+    }
 
     // 5. Initial active invite code record
-    const inviteDocRef = doc(collection(db, 'familyInvites'));
-    const inviteData: FamilyInvite = {
-      id: inviteDocRef.id,
-      familyId,
-      familyName: params.name.trim(),
-      familyPhoto: params.photo || undefined,
-      invitedBy: params.creator.id,
-      invitedByName: params.creator.name,
-      inviteCode,
-      role: 'member',
-      status: 'pending',
-      expiresAt: new Date(Date.now() + 86400000 * 30).toISOString(), // 30 days
-      createdAt: now,
-    };
-    await setDoc(inviteDocRef, inviteData);
+    try {
+      const inviteDocRef = doc(collection(db, 'familyInvites'));
+      const inviteData: FamilyInvite = {
+        id: inviteDocRef.id,
+        familyId,
+        familyName: params.name.trim(),
+        familyPhoto: params.photo || undefined,
+        invitedBy: params.creator.id,
+        invitedByName: params.creator.name,
+        inviteCode,
+        role: 'member',
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 86400000 * 30).toISOString(), // 30 days
+        createdAt: now,
+      };
+      await setDoc(inviteDocRef, inviteData);
+    } catch (err) {
+      console.warn("Could not create initial invite code document:", err);
+    }
 
     // 6. Log initial activity
-    await this.logActivity({
-      familyId,
-      actorUserId: params.creator.id,
-      actorName: params.creator.name,
-      action: `created the "${params.name.trim()}" family space`,
-      entityType: 'family',
-      entityId: familyId,
-    });
+    try {
+      await this.logActivity({
+        familyId,
+        actorUserId: params.creator.id,
+        actorName: params.creator.name,
+        action: `created the "${params.name.trim()}" family space`,
+        entityType: 'family',
+        entityId: familyId,
+      });
+    } catch (err) {
+      console.warn("Could not log initial family creation activity:", err);
+    }
 
     return { family: familyData, membership: membershipData };
   }

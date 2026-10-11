@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
+import { useToast } from '../../context/ToastContext';
 import { FamilyMemberProfile, User, FamilyMember } from '../../types';
 import {
   Phone,
@@ -41,6 +42,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 }) => {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const { showError } = useToast();
 
   // Expandable sections state
   const [expandBasic, setExpandBasic] = useState(true);
@@ -56,7 +58,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
       setShowRemoveConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Could not remove member profile.');
+      showError(err?.message || 'Could not remove member profile.');
     } finally {
       setRemoveLoading(false);
     }

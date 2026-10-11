@@ -10,20 +10,29 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isValidFileSize() {
+      return request.resource == null || request.resource.size < 25 * 1024 * 1024; // 25MB limit
+    }
+
     // Personal user files: strictly readable & writable only by owner
     match /users/{userId}/personal/{allPaths=**} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidFileSize();
+      allow delete: if isOwner(userId);
     }
 
-    // User profile images
+    // User profile avatar
     match /users/{userId}/avatar {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) && (request.resource == null || request.resource.size < 5 * 1024 * 1024);
+      allow delete: if isOwner(userId);
     }
 
-    // Family shared files: readable and writable by authenticated family members
+    // Family shared files: photos, documents, attachments
     match /families/{familyId}/{allPaths=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidFileSize();
+      allow delete: if isAuthenticated();
     }
   }
 }

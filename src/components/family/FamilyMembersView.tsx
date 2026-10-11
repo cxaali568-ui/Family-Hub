@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFamily } from '../../context/FamilyContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -59,6 +60,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
     removeMember,
   } = useFamily();
   const { user: currentUser } = useAuth();
+  const { showError, showSuccess } = useToast();
 
   // Primary top tab: 'members' | 'children' | 'invitations'
   const [activeTab, setActiveTab] = useState<'members' | 'children' | 'invitations'>(initialTab);
@@ -238,7 +240,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
       const inv = await generateInvite(inviteRole, inviteEmail || undefined);
       setGeneratedInvite(inv);
     } catch (err: any) {
-      alert(err?.message || 'Could not generate invite code.');
+      showError(err?.message || 'Could not generate invite code.');
     } finally {
       setInviteLoading(false);
     }
@@ -258,7 +260,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
       await updateMemberRole(roleModalMember.userId, targetRole);
       setRoleModalMember(null);
     } catch (err: any) {
-      alert(err?.message || 'Failed to update member role.');
+      showError(err?.message || 'Failed to update member role.');
     } finally {
       setRoleLoading(false);
     }

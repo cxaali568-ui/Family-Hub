@@ -6,8 +6,9 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
-import { Heart, PlusCircle, Users, ArrowRight, Shield, Check, AlertCircle, LogOut } from 'lucide-react';
+import { Heart, PlusCircle, Users, ArrowRight, Shield, Check, AlertCircle, LogOut, ShieldAlert } from 'lucide-react';
 import { FamilyInvite } from '../../types';
+import { FirestoreRulesModal } from './FirestoreRulesModal';
 
 interface OnboardingViewProps {
   onCancel?: () => void;
@@ -31,6 +32,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [inspectedInvite, setInspectedInvite] = useState<FamilyInvite | null>(null);
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +46,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
     try {
       await createFamily(familyName.trim(), familyPhoto.trim() || undefined);
     } catch (err: any) {
-      setCreateError(err?.message || 'Failed to create family space. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('Missing or insufficient permissions') || err?.code === 'permission-denied') {
+        setCreateError(
+          'Missing or insufficient permissions: Your Firestore Database in the Firebase Console has default locked security rules blocking access. Click below to view and copy the required rules to paste into your Firebase Console.'
+        );
+      } else {
+        setCreateError(msg || 'Failed to create family space. Please try again.');
+      }
     } finally {
       setCreateLoading(false);
     }
@@ -172,9 +181,23 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
               </div>
 
               {createError && (
-                <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{createError}</span>
+                <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-xl text-xs font-semibold space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{createError}</span>
+                  </div>
+                  {createError.includes('permissions') && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs bg-white dark:bg-slate-900 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100"
+                      icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-600" />}
+                      onClick={() => setShowRulesModal(true)}
+                    >
+                      View & Copy Required Firestore Rules
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -323,6 +346,10 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
           )}
         </div>
       </div>
+      <FirestoreRulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 };

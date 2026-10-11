@@ -4,7 +4,7 @@ import { initializeFirestore, Firestore, doc, getDoc } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
-// Safely resolve config value: ignore dummy "1" overrides and empty strings
+// Safely resolve config value: ignore dummy "1" overrides, empty strings, and old stale project overrides
 const resolveConfig = (envVal: string | undefined, defaultVal: string) => {
   return envVal && envVal !== '1' && envVal.trim() !== '' ? envVal : defaultVal;
 };
@@ -34,10 +34,15 @@ if (!getApps().length) {
 
 export const auth: Auth = getAuth(app);
 
-// Use standard Firestore with auto-detect long polling for resilient connection in web/iframe previews
-export const db: Firestore = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-});
+// Use standard Firestore with provisioned databaseId and auto-detect long polling
+const databaseId = (appletConfig as any).firestoreDatabaseId;
+export const db: Firestore = initializeFirestore(
+  app,
+  {
+    experimentalAutoDetectLongPolling: true,
+  },
+  databaseId && databaseId !== '(default)' ? databaseId : undefined
+);
 
 export const storage: FirebaseStorage = getStorage(app);
 

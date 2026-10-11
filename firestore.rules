@@ -39,9 +39,10 @@ service cloud.firestore {
       );
     }
 
-    // --- Users Collection (User can only read, create, or update their own profile) ---
+    // --- Users Collection (Authenticated users can read profiles, owner can create or update) ---
     match /users/{userId} {
-      allow read, create, update: if isOwner(userId);
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
       allow delete: if false;
     }
 
@@ -373,41 +374,31 @@ service cloud.firestore {
           resource.data.createdBy == request.auth.uid
         );
       }
+
+      // --- Family Documents Subcollection ---
+      match /documents/{documentId} {
+        allow read: if isAuthenticated() && isFamilyMember(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) &&
+          request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && (
+          isFamilyAdminOrOwner(familyId) ||
+          resource.data.uploadedById == request.auth.uid
+        );
+      }
     }
 
     // --- Family Memberships Collection ---
     match /familyMembers/{membershipId} {
-      allow get: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        isFamilyMember(resource.data.familyId)
-      );
-
-      // Authenticated users can list:
-      // 1. Their own memberships (where userId == auth.uid)
-      // 2. Members of a family they actively belong to (where familyId == targetFamily)
-      allow list: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        isFamilyMember(resource.data.familyId)
-      );
+      allow read: if isAuthenticated();
 
       // Creation:
-      // Case 1: Creator of family creating their own owner membership
-      // Case 2: User joining with an active invitation (role != 'owner' unless creator)
-      // Case 3: Family Admin/Owner adding a membership
+      // A user can create their own membership (creating family or joining),
+      // OR a family admin/owner can add a member.
       allow create: if isAuthenticated() && (
-        (
-          request.resource.data.userId == request.auth.uid &&
-          (
-            (request.resource.data.role == 'owner' &&
-             get(/databases/$(database)/documents/families/$(request.resource.data.familyId)).data.createdBy == request.auth.uid) ||
-            (request.resource.data.role in ['member', 'admin'] &&
-             exists(/databases/$(database)/documents/families/$(request.resource.data.familyId)))
-          )
-        ) ||
-        (
-          isFamilyAdminOrOwner(request.resource.data.familyId) &&
-          request.resource.data.role in ['admin', 'member']
-        )
+        request.resource.data.userId == request.auth.uid ||
+        isFamilyAdminOrOwner(request.resource.data.familyId)
       );
 
       // Updates: Identity and familyId are strictly immutable
@@ -415,7 +406,7 @@ service cloud.firestore {
         request.resource.data.familyId == resource.data.familyId &&
         request.resource.data.userId == resource.data.userId &&
         (
-          // User updating their own status without modifying role
+          // User updating their own profile/status without modifying role
           (
             resource.data.userId == request.auth.uid &&
             request.resource.data.role == resource.data.role &&
@@ -436,16 +427,8 @@ service cloud.firestore {
 
     // --- Family Invitations ---
     match /familyInvites/{inviteId} {
-      allow get: if isAuthenticated() && (
-        resource.data.status == 'pending' ||
-        isFamilyMember(resource.data.familyId)
-      );
-      allow list: if isAuthenticated() && (
-        (resource.data.status == 'pending' && resource.data.inviteCode != null) ||
-        isFamilyMember(resource.data.familyId)
-      );
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
-        isFamilyAdminOrOwner(request.resource.data.familyId) &&
         request.resource.data.invitedBy == request.auth.uid;
       allow update: if isAuthenticated() && (
         (request.resource.data.status in ['accepted', 'expired'] &&
@@ -499,14 +482,10 @@ service cloud.firestore {
 
     // --- Chat Members ---
     match /chatMembers/{chatMemberId} {
-      allow get: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        isFamilyMember(resource.data.familyId)
-      );
-      allow list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid &&
-        isFamilyMember(request.resource.data.familyId)
+        request.resource.data.userId == request.auth.uid ||
+        isFamilyAdminOrOwner(request.resource.data.familyId)
       );
       allow update, delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
@@ -521,10 +500,8 @@ service cloud.firestore {
         isFamilyMember(resource.data.familyId)
       );
       allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() &&
-        request.resource.data.userId == request.auth.uid &&
-        isFamilyMember(request.resource.data.familyId);
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // --- Notifications ---
@@ -542,10 +519,12 @@ service cloud.firestore {
 
     // --- Activity Logs ---
     match /activityLogs/{activityId} {
-      allow get, list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow get, list: if isAuthenticated() && (
+        resource.data.actorUserId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
+      );
       allow create: if isAuthenticated() &&
-        request.resource.data.actorUserId == request.auth.uid &&
-        isFamilyMember(request.resource.data.familyId);
+        request.resource.data.actorUserId == request.auth.uid;
       allow update, delete: if false;
     }
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { useToast } from '../../context/ToastContext';
 import { Expense, User } from '../../types';
 import { getCategoryIconComponent } from './AddExpenseModal';
 import {
@@ -42,6 +43,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const { showError } = useToast();
 
   if (!expense) return null;
 
@@ -54,7 +56,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
       setShowDeleteConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Could not delete expense.');
+      showError(err?.message || 'Could not delete expense.');
     } finally {
       setDeleteLoading(false);
     }
