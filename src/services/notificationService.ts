@@ -27,8 +27,7 @@ class NotificationService {
 
     const q = query(
       collection(db, 'notifications'),
-      where('recipientUserId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('recipientUserId', '==', userId)
     );
 
     return onSnapshot(
@@ -38,6 +37,7 @@ class NotificationService {
         snapshot.forEach((d) => {
           notifs.push(d.data() as AppNotification);
         });
+        notifs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         callback(notifs);
       },
       (error) => {

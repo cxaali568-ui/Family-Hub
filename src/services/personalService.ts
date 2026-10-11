@@ -97,8 +97,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalExpenses'),
-      where('ownerId', '==', ownerId),
-      orderBy('date', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -106,6 +105,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalExpense[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalExpense));
+        list.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -156,8 +156,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalSchoolWork'),
-      where('ownerId', '==', ownerId),
-      orderBy('date', 'asc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -165,6 +164,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalSchoolWorkItem[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalSchoolWorkItem));
+        list.sort((a, b) => (a.date || a.createdAt || '').localeCompare(b.date || b.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -212,8 +212,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalNotes'),
-      where('ownerId', '==', ownerId),
-      orderBy('updatedAt', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -221,6 +220,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalNote[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalNote));
+        list.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -272,8 +272,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalNeeds'),
-      where('ownerId', '==', ownerId),
-      orderBy('dueDate', 'asc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -281,6 +280,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalDailyNeed[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalDailyNeed));
+        list.sort((a, b) => (a.dueDate || a.createdAt || '').localeCompare(b.dueDate || b.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -329,8 +329,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalPlans'),
-      where('ownerId', '==', ownerId),
-      orderBy('startDate', 'asc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -338,6 +337,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalPlan[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalPlan));
+        list.sort((a, b) => (a.startDate || a.createdAt || '').localeCompare(b.startDate || b.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -389,8 +389,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalReminders'),
-      where('ownerId', '==', ownerId),
-      orderBy('date', 'asc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -398,6 +397,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalReminder[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalReminder));
+        list.sort((a, b) => (a.date || a.createdAt || '').localeCompare(b.date || b.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -445,8 +445,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalFiles'),
-      where('ownerId', '==', ownerId),
-      orderBy('createdAt', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -454,6 +453,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalFile[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalFile));
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -524,8 +524,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalPhotos'),
-      where('ownerId', '==', ownerId),
-      orderBy('createdAt', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -533,6 +532,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalPhoto[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalPhoto));
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -549,8 +549,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalAlbums'),
-      where('ownerId', '==', ownerId),
-      orderBy('createdAt', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -558,6 +557,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalAlbum[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalAlbum));
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         callback(list);
       },
       (err) => {
@@ -639,8 +639,7 @@ class PersonalService {
 
     const q = query(
       collection(db, 'personalAIConversations'),
-      where('ownerId', '==', ownerId),
-      orderBy('updatedAt', 'desc')
+      where('ownerId', '==', ownerId)
     );
 
     return onSnapshot(
@@ -648,6 +647,7 @@ class PersonalService {
       (snap) => {
         const list: PersonalAIConversation[] = [];
         snap.forEach((d) => list.push(d.data() as PersonalAIConversation));
+        list.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
         callback(list);
       },
       (err) => {

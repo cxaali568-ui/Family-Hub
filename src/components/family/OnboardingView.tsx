@@ -85,7 +85,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
     try {
       await joinFamilyWithCode(inspectedInvite.inviteCode);
     } catch (err: any) {
-      setJoinError(err?.message || 'Failed to join family.');
+      const msg = err?.message || '';
+      if (msg.includes('Missing or insufficient permissions') || err?.code === 'permission-denied') {
+        setJoinError(
+          'Missing or insufficient permissions: The updated Firestore Security Rules allowing members to join have not been published in the Firebase Console yet. Click below to view and copy the updated rules.'
+        );
+      } else {
+        setJoinError(msg || 'Failed to join family.');
+      }
     } finally {
       setJoinLoading(false);
     }
@@ -257,9 +264,23 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
               </div>
 
               {joinError && (
-                <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{joinError}</span>
+                <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-xl text-xs font-semibold space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{joinError}</span>
+                  </div>
+                  {joinError.includes('permissions') && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs bg-white dark:bg-slate-900 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100"
+                      icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-600" />}
+                      onClick={() => setShowRulesModal(true)}
+                    >
+                      View & Copy Required Firestore Rules
+                    </Button>
+                  )}
                 </div>
               )}
 

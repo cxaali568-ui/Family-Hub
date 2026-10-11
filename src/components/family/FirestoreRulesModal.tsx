@@ -58,10 +58,7 @@ service cloud.firestore {
 
     // --- Families Collection ---
     match /families/{familyId} {
-      allow read: if isAuthenticated() && (
-        resource.data.createdBy == request.auth.uid ||
-        isFamilyMember(familyId)
-      );
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
       allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) &&
         request.resource.data.createdBy == resource.data.createdBy &&
@@ -106,11 +103,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
         request.resource.data.invitedBy == request.auth.uid;
-      allow update: if isAuthenticated() && (
-        (request.resource.data.status in ['accepted', 'expired'] &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
-        isFamilyAdminOrOwner(resource.data.familyId)
-      );
+      allow update: if isAuthenticated();
       allow delete: if isAuthenticated() && isFamilyAdminOrOwner(resource.data.familyId);
     }
 

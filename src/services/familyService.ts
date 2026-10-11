@@ -330,32 +330,44 @@ class FamilyService {
     await setDoc(doc(db, 'familyMembers', membershipId), membershipData);
 
     // 2. Add user to family chat room
-    const chatRoomId = `${invite.familyId}_general`;
-    const chatMemberId = `${chatRoomId}_${user.id}`;
-    await setDoc(doc(db, 'chatMembers', chatMemberId), {
-      id: chatMemberId,
-      chatRoomId,
-      familyId: invite.familyId,
-      userId: user.id,
-      joinedAt: now,
-      status: 'active',
-    });
+    try {
+      const chatRoomId = `${invite.familyId}_general`;
+      const chatMemberId = `${chatRoomId}_${user.id}`;
+      await setDoc(doc(db, 'chatMembers', chatMemberId), {
+        id: chatMemberId,
+        chatRoomId,
+        familyId: invite.familyId,
+        userId: user.id,
+        joinedAt: now,
+        status: 'active',
+      });
+    } catch (err) {
+      console.warn("Could not add chat member on join:", err);
+    }
 
     // 3. Mark invite as accepted
-    await updateDoc(doc(db, 'familyInvites', invite.id), {
-      status: 'accepted',
-      updatedAt: now,
-    });
+    try {
+      await updateDoc(doc(db, 'familyInvites', invite.id), {
+        status: 'accepted',
+        updatedAt: now,
+      });
+    } catch (err) {
+      console.warn("Could not mark invite as accepted:", err);
+    }
 
     // 4. Log activity
-    await this.logActivity({
-      familyId: invite.familyId,
-      actorUserId: user.id,
-      actorName: user.name,
-      action: `joined the family via invite code`,
-      entityType: 'member',
-      entityId: membershipId,
-    });
+    try {
+      await this.logActivity({
+        familyId: invite.familyId,
+        actorUserId: user.id,
+        actorName: user.name,
+        action: `joined the family via invite code`,
+        entityType: 'member',
+        entityId: membershipId,
+      });
+    } catch (err) {
+      console.warn("Could not log join activity:", err);
+    }
 
     // 5. Send notification to inviter
     try {
@@ -488,9 +500,7 @@ class FamilyService {
   ): () => void {
     const q = query(
       collection(db, 'activityLogs'),
-      where('familyId', '==', familyId),
-      orderBy('createdAt', 'desc'),
-      limit(25)
+      where('familyId', '==', familyId)
     );
 
     return onSnapshot(
@@ -498,7 +508,8 @@ class FamilyService {
       (snap) => {
         const list: ActivityLog[] = [];
         snap.forEach(d => list.push(d.data() as ActivityLog));
-        callback(list);
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        callback(list.slice(0, 25));
       },
       (err) => {
         console.warn("Error listening to activity logs:", err);
