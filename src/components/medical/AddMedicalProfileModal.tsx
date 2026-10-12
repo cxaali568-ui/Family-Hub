@@ -36,11 +36,14 @@ export const AddMedicalProfileModal: React.FC<AddMedicalProfileModalProps> = ({
   const candidateMembers = members.filter((m) => !existingPersonIds.has(m.id));
   const candidateChildren = children.filter((c) => !existingPersonIds.has(c.id));
 
-  // Selection
-  const [selectedType, setSelectedType] = useState<'member' | 'child'>('member');
+  // Selection mode: 'member' | 'child' | 'custom'
+  const initialType = candidateMembers.length > 0 ? 'member' : candidateChildren.length > 0 ? 'child' : 'custom';
+  const [selectedType, setSelectedType] = useState<'member' | 'child' | 'custom'>(initialType);
   const [selectedPersonId, setSelectedPersonId] = useState<string>(
     candidateMembers[0]?.id || candidateChildren[0]?.id || ''
   );
+  const [customName, setCustomName] = useState('');
+  const [customRole, setCustomRole] = useState<'adult' | 'child' | 'elderly'>('adult');
 
   const [bloodGroup, setBloodGroup] = useState('O+');
   const [height, setHeight] = useState('');
@@ -58,36 +61,59 @@ export const AddMedicalProfileModal: React.FC<AddMedicalProfileModalProps> = ({
   const [error, setError] = useState('');
 
   // Selected person details
-  const selectedMember = candidateMembers.find((m) => m.id === selectedPersonId);
-  const selectedChild = candidateChildren.find((c) => c.id === selectedPersonId);
+  const availableMembers = candidateMembers.length > 0 ? candidateMembers : members;
+  const availableChildren = candidateChildren.length > 0 ? candidateChildren : children;
+
+  const selectedMember = availableMembers.find((m) => m.id === selectedPersonId);
+  const selectedChild = availableChildren.find((c) => c.id === selectedPersonId);
 
   const personName =
-    selectedType === 'member'
-      ? selectedMember?.fullName || 'Family Member'
+    selectedType === 'custom'
+      ? customName.trim()
+      : selectedType === 'member'
+      ? selectedMember?.fullName || (selectedPersonId === currentUser.id ? currentUser.name : 'Family Member')
       : selectedChild?.fullName || 'Child';
 
   const photo =
-    selectedType === 'member'
-      ? selectedMember?.profileImage
+    selectedType === 'custom'
+      ? undefined
+      : selectedType === 'member'
+      ? selectedMember?.profileImage || (selectedPersonId === currentUser.id ? currentUser.avatar || currentUser.profileImage : undefined)
       : selectedChild?.photo;
+
+  const personType: 'adult' | 'child' | 'elderly' =
+    selectedType === 'custom'
+      ? customRole
+      : selectedType === 'member'
+      ? selectedMember?.isChild ? 'child' : 'adult'
+      : 'child';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!selectedPersonId) {
-      setError('Please select a family member or child.');
+    if (selectedType === 'custom' && !customName.trim()) {
+      setError('Please enter the person\'s name.');
       return;
     }
+
+    if (selectedType !== 'custom' && !selectedPersonId) {
+      setError('Please select a family member or child, or choose Custom Dependent.');
+      return;
+    }
+
+    const finalPersonId = selectedType === 'custom'
+      ? `person_${Date.now()}`
+      : selectedPersonId;
 
     setLoading(true);
     try {
       const newProfile = await medicalService.addMedicalProfile(
         familyId,
         {
-          personId: selectedPersonId,
-          personName,
-          personType: selectedType === 'member' ? (selectedMember?.isChild ? 'child' : 'adult') : 'child',
+          personId: finalPersonId,
+          personName: personName || (currentUser.name || 'Family Member'),
+          personType,
           photo,
           bloodGroup,
           height: height.trim() || undefined,
@@ -106,7 +132,8 @@ export const AddMedicalProfileModal: React.FC<AddMedicalProfileModalProps> = ({
       onProfileAdded(newProfile);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to create medical profile.');
+      console.error('Failed to create medical profile:', err);
+      setError(err?.message || 'Failed to create medical profile. Please check family permissions.');
     } finally {
       setLoading(false);
     }
@@ -130,69 +157,109 @@ export const AddMedicalProfileModal: React.FC<AddMedicalProfileModalProps> = ({
         {/* Person Selector */}
         <div className="space-y-2">
           <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-            1. Select Family Member or Child
+            1. Select Family Member or Dependent
           </label>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => {
                 setSelectedType('member');
-                setSelectedPersonId(candidateMembers[0]?.id || '');
+                setSelectedPersonId(availableMembers[0]?.id || currentUser.id);
               }}
-              className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center ${
+              className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
                 selectedType === 'member'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 ring-2 ring-indigo-500/20'
                   : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
               }`}
             >
-              Adult / Family Member ({candidateMembers.length})
+              Member ({availableMembers.length})
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setSelectedType('child');
-                setSelectedPersonId(candidateChildren[0]?.id || '');
+                setSelectedPersonId(availableChildren[0]?.id || '');
               }}
-              className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center ${
+              className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
                 selectedType === 'child'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 ring-2 ring-indigo-500/20'
                   : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
               }`}
             >
-              Child ({candidateChildren.length})
+              Child ({availableChildren.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedType('custom');
+              }}
+              className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
+                selectedType === 'custom'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 ring-2 ring-indigo-500/20'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              Custom / Other
             </button>
           </div>
 
-          <div>
-            <select
-              value={selectedPersonId}
-              onChange={(e) => setSelectedPersonId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm px-3.5 py-2.5 font-medium"
-              required
-            >
-              {selectedType === 'member' ? (
-                candidateMembers.length > 0 ? (
-                  candidateMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.fullName} ({m.relationship})
+          {selectedType === 'custom' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <Input
+                label="Full Name *"
+                placeholder="e.g. Grandfather Tariq, Uncle Ali"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                required
+              />
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Category
+                </label>
+                <select
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value as any)}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm px-3.5 py-2.5 font-medium"
+                >
+                  <option value="adult">Adult</option>
+                  <option value="elderly">Elderly / Senior</option>
+                  <option value="child">Child / Infant</option>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <select
+                value={selectedPersonId}
+                onChange={(e) => setSelectedPersonId(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm px-3.5 py-2.5 font-medium"
+                required
+              >
+                {selectedType === 'member' ? (
+                  availableMembers.length > 0 ? (
+                    availableMembers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.fullName} {m.relationship ? `(${m.relationship})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={currentUser.id}>{currentUser.name} (Myself)</option>
+                  )
+                ) : availableChildren.length > 0 ? (
+                  availableChildren.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName} ({c.classGrade || 'Child'})
                     </option>
                   ))
                 ) : (
-                  <option value="">All family members already have medical profiles</option>
-                )
-              ) : candidateChildren.length > 0 ? (
-                candidateChildren.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.fullName} ({c.classGrade || 'Child'})
-                  </option>
-                ))
-              ) : (
-                <option value="">All children already have medical profiles</option>
-              )}
-            </select>
-          </div>
+                  <option value="">No children profiles found</option>
+                )}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Basic Health Metrics */}

@@ -111,40 +111,40 @@ service cloud.firestore {
       // --- Medical Profiles Subcollection ---
       match /medicalProfiles/{profileId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow create: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == familyId;
-        allow update: if isAuthenticated() && isFamilyAdminOrOwner(familyId) && request.resource.data.familyId == resource.data.familyId;
-        allow delete: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow create: if isAuthenticated() && isFamilyMember(familyId) && request.resource.data.familyId == familyId;
+        allow update: if isAuthenticated() && isFamilyMember(familyId) && request.resource.data.familyId == resource.data.familyId;
+        allow delete: if isAuthenticated() && (isFamilyAdminOrOwner(familyId) || resource.data.createdBy == request.auth.uid);
 
         match /allergies/{allergyId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
 
         match /conditions/{conditionId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
 
         match /medicines/{medicineId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
 
         match /doctors/{doctorId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
 
         match /documents/{docId} {
           allow read: if isAuthenticated() && isFamilyMember(familyId);
-          allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+          allow write: if isAuthenticated() && isFamilyMember(familyId);
         }
       }
 
       // --- Medical Appointments Subcollection ---
       match /medicalAppointments/{appointmentId} {
         allow read: if isAuthenticated() && isFamilyMember(familyId);
-        allow write: if isAuthenticated() && isFamilyAdminOrOwner(familyId);
+        allow write: if isAuthenticated() && isFamilyMember(familyId);
       }
 
       // --- Special Care Profiles Subcollection ---
