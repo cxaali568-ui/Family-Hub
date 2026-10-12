@@ -309,6 +309,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 async function startServer() {
+  // Serve static assets from public/ folder (PWA icons, manifest, etc.)
+  app.use(express.static(path.resolve(process.cwd(), 'public')));
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

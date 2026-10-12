@@ -7,8 +7,8 @@ import { usePersonal } from '../../context/PersonalContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Badge } from '../ui/Badge';
-import { Settings, Globe, Moon, Sun, Monitor, Lock, Shield, Users, Key, Copy, Check, LogOut } from 'lucide-react';
+import { Settings, Globe, Moon, Sun, Monitor, Lock, Shield, Users, Key, Copy, Check, LogOut, Smartphone } from 'lucide-react';
+import { PWAInstallPrompt } from '../ui/PWAInstallPrompt';
 
 export const SettingsView: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -208,6 +208,24 @@ export const SettingsView: React.FC = () => {
             </Card>
           )}
         </div>
+
+        {/* Install Mobile Web App (PWA) */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Install Mobile App (PWA)
+              </h3>
+              <p className="text-xs text-slate-400">
+                Install FamilyHub to your Android or iPhone Home Screen for fast, standalone access.
+              </p>
+            </div>
+          </div>
+          <PWAInstallPrompt variant="banner" />
+        </Card>
 
         {/* Account Info and Logout */}
         <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

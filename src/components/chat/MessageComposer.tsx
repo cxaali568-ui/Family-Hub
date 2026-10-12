@@ -22,6 +22,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   onCancelReply,
 }) => {
   const { t } = useLanguage();
+  const [isSending, setIsSending] = useState(false);
   const [text, setText] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -66,7 +67,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   };
 
   const handleSend = async () => {
-    if ((!text.trim() && pendingAttachments.length === 0) || isUploading) return;
+    if ((!text.trim() && pendingAttachments.length === 0) || isUploading || isSending) return;
 
     // Reset typing immediately
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -83,6 +84,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     const attachmentsToSend = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined;
     const textToSend = text.trim();
 
+    setIsSending(true);
     // Clear state
     setText('');
     setPendingAttachments([]);
@@ -91,7 +93,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
       textareaRef.current.style.height = 'auto';
     }
 
-    await onSendMessage(textToSend, replyData, attachmentsToSend);
+    try {
+      await onSendMessage(textToSend, replyData, attachmentsToSend);
+    } finally {
+      setIsSending(false);
+    }
 
     // Keep focus on desktop
     if (window.innerWidth > 768) {
@@ -291,11 +297,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         <button
           type="button"
           onClick={handleSend}
-          disabled={(!text.trim() && pendingAttachments.length === 0) || isUploading}
+          disabled={(!text.trim() && pendingAttachments.length === 0) || isUploading || isSending}
           className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
           title="Send message"
         >
-          <Send className="w-5 h-5" />
+          {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
         </button>
       </div>
     </div>

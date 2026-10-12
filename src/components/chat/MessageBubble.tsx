@@ -327,15 +327,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       {/* Floating Action Menu (Reply, React, Pin, Star, Edit, Delete, Copy) */}
       {!isDeleted && (
         <div
-          className={`flex items-center gap-0.5 mt-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 shadow-sm z-10 ${
+          className={`flex items-center gap-0.5 mt-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 shadow-xs z-10 ${
             isCurrentUser ? 'mr-1' : 'ml-10'
           }`}
         >
           {/* Reaction button */}
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Add Reaction"
+            aria-label="Add reaction to message"
           >
             <Smile className="w-3.5 h-3.5" />
           </button>
@@ -343,8 +344,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Reply */}
           <button
             onClick={() => onReply(message)}
-            className="p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Reply"
+            aria-label="Reply to message"
           >
             <Reply className="w-3.5 h-3.5" />
           </button>
@@ -352,8 +354,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Copy */}
           <button
             onClick={handleCopyText}
-            className="p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Copy Text"
+            aria-label="Copy message text"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
@@ -362,12 +365,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {onToggleImportant && (
             <button
               onClick={() => onToggleImportant(message.id)}
-              className={`p-1 rounded-full transition-colors ${
+              className={`p-1.5 rounded-full transition-colors ${
                 isImportant
                   ? 'text-amber-500'
                   : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
               title={isImportant ? 'Unstar' : 'Star message'}
+              aria-label={isImportant ? 'Unstar message' : 'Star message'}
             >
               <Star className={`w-3.5 h-3.5 ${isImportant ? 'fill-current' : ''}`} />
             </button>
@@ -377,12 +381,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {canPin && (
             <button
               onClick={() => onTogglePin(message.id, message.isPinned || false)}
-              className={`p-1 rounded-full transition-colors ${
+              className={`p-1.5 rounded-full transition-colors ${
                 message.isPinned
                   ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/60'
                   : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
               title={message.isPinned ? 'Unpin message' : 'Pin message'}
+              aria-label={message.isPinned ? 'Unpin message' : 'Pin message'}
             >
               <Pin className="w-3.5 h-3.5" />
             </button>
@@ -396,16 +401,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   setEditText(message.text);
                   setIsEditing(true);
                 }}
-                className="p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 title="Edit Message"
+                aria-label="Edit message"
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
 
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="p-1 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
                 title="Delete Message"
+                aria-label="Delete message"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

@@ -84,11 +84,16 @@ export const PersonalLockScreen: React.FC = () => {
           </button>
         ))}
         <button
-          onClick={handleQuickDemoUnlock}
-          className="w-18 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
-          title="Demo shortcut (1234)"
+          type="button"
+          onClick={() => {
+            setPin('');
+            setError(false);
+          }}
+          className="w-18 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+          title="Clear PIN"
+          aria-label="Clear entered PIN"
         >
-          Demo
+          C
         </button>
         <button
           onClick={() => handleDigit('0')}

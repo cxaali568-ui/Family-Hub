@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="fhGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="50%" stop-color="#4338CA" />
+      <stop offset="100%" stop-color="#312E81" />
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E" />
+      <stop offset="100%" stop-color="#E11D48" />
+    </linearGradient>
+    <filter id="fhShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#fhGrad)" />
+
+  <!-- Inner Subtle Accent Ring -->
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="none" stroke="#818CF8" stroke-width="4" stroke-opacity="0.3" />
+
+  <!-- Home / Family Roof Symbol -->
+  <g filter="url(#fhShadow)">
+    <path d="M256 100 L396 220 C402 225 402 235 395 240 L380 252 C374 257 365 256 360 250 L256 160 L152 250 C147 256 138 257 132 252 L117 240 C110 235 110 225 116 220 Z" fill="#FFFFFF" opacity="0.95" />
+    
+    <!-- Heart & Figures in Family Center -->
+    <path d="M256 220 C230 185 170 195 160 240 C150 285 210 335 256 380 C302 335 362 285 352 240 C342 195 282 185 256 220 Z" fill="url(#heartGrad)" />
+    
+    <!-- Family Figures Silhouette in Gold / White -->
+    <circle cx="256" cy="256" r="22" fill="#FFFFFF" />
+    <circle cx="218" cy="272" r="16" fill="#FDE047" />
+    <circle cx="294" cy="272" r="16" fill="#67E8F9" />
+    
+    <!-- Unified Family Base Curve -->
+    <path d="M200 320 C216 304 296 304 312 320 C322 330 300 344 256 344 C212 344 190 330 200 320 Z" fill="#FFFFFF" opacity="0.9" />
+  </g>
+</svg>

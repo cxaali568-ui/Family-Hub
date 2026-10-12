@@ -6,6 +6,8 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Avatar } from '../ui/Avatar';
 import { NotificationDrawer } from '../notifications/NotificationDrawer';
+import { OfflineBanner } from '../ui/OfflineBanner';
+import { PWAInstallPrompt } from '../ui/PWAInstallPrompt';
 import {
   MessageSquare,
   Users,
@@ -123,9 +125,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">
-      {/* ---------------- Desktop Sidebar ---------------- */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shrink-0 z-20">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">
+      {/* Network Connection Status */}
+      <OfflineBanner />
+
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* ---------------- Desktop Sidebar ---------------- */}
+        <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shrink-0 z-20">
         {/* Family Switcher Header */}
         <div className="relative p-3.5 border-b border-slate-100 dark:border-slate-800">
           <button
@@ -241,6 +247,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
           })}
         </nav>
 
+        {/* In-App Install Prompt Banner */}
+        <div className="px-3 pb-2">
+          <PWAInstallPrompt variant="banner" />
+        </div>
+
         {/* User Profile & Sign Out Footer */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
@@ -289,6 +300,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
           </div>
 
           <div className="flex items-center gap-1.5">
+            <PWAInstallPrompt variant="button" />
             <button
               onClick={() => setNotificationOpen(true)}
               className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -367,6 +379,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
           </button>
         </nav>
       </div>
+      </div>
 
       {/* ---------------- Mobile Full Drawer Menu ---------------- */}
       {mobileMenuOpen && (
@@ -392,31 +405,46 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               </button>
             </div>
 
-            {/* Mobile Family Switcher */}
-            {userFamilies.length > 1 && (
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Switch Family:</p>
-                <div className="space-y-1">
-                  {userFamilies.map(f => (
-                    <button
-                      key={f.family.id}
-                      onClick={() => {
-                        switchFamily(f.family.id);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-xs ${
-                        f.family.id === currentFamily?.id
-                          ? 'bg-indigo-600 text-white font-bold'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <span className="truncate">{f.family.name}</span>
-                      {f.family.id === currentFamily?.id && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
+            {/* Mobile Family Switcher & Management */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 space-y-2">
+              {userFamilies.length > 1 && (
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Switch Family:</p>
+                  <div className="space-y-1">
+                    {userFamilies.map(f => (
+                      <button
+                        key={f.family.id}
+                        onClick={() => {
+                          switchFamily(f.family.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors ${
+                          f.family.id === currentFamily?.id
+                            ? 'bg-indigo-600 text-white font-bold'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="truncate">{f.family.name}</span>
+                        {f.family.id === currentFamily?.id && <Check className="w-3.5 h-3.5" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {onOpenOnboarding && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onOpenOnboarding();
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 p-2 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Join or Create Family</span>
+                </button>
+              )}
+            </div>
 
             <nav className="flex-1 overflow-y-auto p-3 space-y-1">
               {navItems.map(item => {
@@ -449,6 +477,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
                 );
               })}
             </nav>
+
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800">
+              <PWAInstallPrompt variant="menu-item" />
+            </div>
 
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
               <button

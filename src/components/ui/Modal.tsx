@@ -51,11 +51,14 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Content */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
         className={`relative w-full ${maxWidths[maxWidth]} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150`}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            <h3 id="modal-title" className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
             {subtitle && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
             )}

@@ -207,6 +207,8 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setCurrentFamily(target.family);
       setFamilyMembership(target.membership);
       localStorage.setItem(`familyhub_active_family_${user.id}`, familyId);
+      // Requirement: Family Chat is the first/default Family screen after switching families
+      setCurrentRoute('chat');
     }
   };
 
@@ -220,6 +222,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await refreshFamilyData();
     setCurrentFamily(result.family);
     setFamilyMembership(result.membership);
+    setCurrentRoute('chat');
     return result.family;
   };
 
@@ -234,6 +237,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await refreshFamilyData();
     setCurrentFamily(result.family);
     setFamilyMembership(result.membership);
+    setCurrentRoute('chat');
     return result;
   };
 
