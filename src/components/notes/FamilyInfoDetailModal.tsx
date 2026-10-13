@@ -32,7 +32,16 @@ interface FamilyInfoDetailModalProps {
   onUpdate: () => void;
 }
 
-export const FamilyInfoDetailModal: React.FC<FamilyInfoDetailModalProps> = ({
+interface FamilyInfoDetailModalContentProps extends Omit<FamilyInfoDetailModalProps, 'info'> {
+  info: FamilyInformation;
+}
+
+export const FamilyInfoDetailModal: React.FC<FamilyInfoDetailModalProps> = (props) => {
+  if (!props.isOpen || !props.info) return null;
+  return <FamilyInfoDetailModalContent {...props} info={props.info} />;
+};
+
+const FamilyInfoDetailModalContent: React.FC<FamilyInfoDetailModalContentProps> = ({
   isOpen,
   onClose,
   info,
@@ -40,8 +49,6 @@ export const FamilyInfoDetailModal: React.FC<FamilyInfoDetailModalProps> = ({
   familyId,
   onUpdate,
 }) => {
-  if (!info) return null;
-
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(info.title);
   const [editValue, setEditValue] = useState(info.value);

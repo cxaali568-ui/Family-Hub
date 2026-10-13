@@ -44,7 +44,16 @@ interface NoteDetailModalProps {
   onUpdate: (updatedNote?: FamilyNote) => void;
 }
 
-export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
+interface NoteDetailModalContentProps extends Omit<NoteDetailModalProps, 'note'> {
+  note: FamilyNote;
+}
+
+export const NoteDetailModal: React.FC<NoteDetailModalProps> = (props) => {
+  if (!props.isOpen || !props.note) return null;
+  return <NoteDetailModalContent {...props} note={props.note} />;
+};
+
+const NoteDetailModalContent: React.FC<NoteDetailModalContentProps> = ({
   isOpen,
   onClose,
   note,
@@ -55,8 +64,6 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   familyId,
   onUpdate,
 }) => {
-  if (!note) return null;
-
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(note.title);
   const [editDescription, setEditDescription] = useState(note.description || note.content || '');

@@ -27,7 +27,10 @@ export const FamilyPhotosDocsView: React.FC<FamilyPhotosDocsViewProps> = ({ mode
   if (mode === 'photos') {
     return <FamilyPhotosDashboard />;
   }
+  return <FamilyDocumentsDashboard />;
+};
 
+const FamilyDocumentsDashboard: React.FC = () => {
   const { currentFamily, familyPermissions } = useFamily();
   const { user } = useAuth();
 
