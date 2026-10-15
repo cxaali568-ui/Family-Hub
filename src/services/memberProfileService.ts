@@ -20,6 +20,16 @@ import { db, storage } from '../lib/firebase';
 import { FamilyMemberProfile, User, FamilyMember, AppNotification } from '../types';
 import { familyService } from './familyService';
 
+function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
+  const clean: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  return clean as T;
+}
+
 class MemberProfileService {
   /**
    * Subscribes to real-time member profiles for a family
@@ -55,6 +65,7 @@ class MemberProfileService {
     );
   }
 
+
   /**
    * Auto-populates or synchronizes initial member profile for the family owner/members
    * if no member profiles exist yet
@@ -85,7 +96,7 @@ class MemberProfileService {
           updatedAt: now,
           status: 'active',
         };
-        await setDoc(docRef, profile);
+        await setDoc(docRef, cleanFirestoreData(profile));
       }
     } catch (err) {
       console.warn('Could not ensure owner member profile:', err);
@@ -125,7 +136,7 @@ class MemberProfileService {
       status: 'active',
     };
 
-    await setDoc(newDoc, profile);
+    await setDoc(newDoc, cleanFirestoreData(profile));
 
     // Audit log
     await familyService.logActivity({
