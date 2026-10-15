@@ -7,6 +7,9 @@ import { serverAIService } from './server/ai/AIService';
 
 dotenv.config();
 
+// Enforce HMR disabled in AI Studio dev server environment
+process.env.DISABLE_HMR = 'true';
+
 // Remove bad dummy "1" environment overrides injected into the process
 const badFirebaseKeys = [
   'VITE_FIREBASE_API_KEY',
@@ -314,7 +317,7 @@ async function startServer() {
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);
