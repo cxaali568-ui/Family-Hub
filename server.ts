@@ -320,6 +320,36 @@ async function startServer() {
       server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
+
+    // Provide a graceful Vite dev client that resolves all Vite modules and avoids HMR WebSocket rejection errors
+    app.get('/@vite/client', async (req: Request, res: Response, next) => {
+      try {
+        const mod = await vite.transformRequest('/@vite/client');
+        if (!mod || !mod.code) return next();
+        let code = mod.code
+          .replace(
+            'reject(/* @__PURE__ */ new Error("WebSocket closed without opened."));',
+            'resolve(); return;'
+          )
+          .replace(
+            'reject(new Error("WebSocket closed without opened."));',
+            'resolve(); return;'
+          )
+          .replace(
+            'console.error(`[vite] failed to connect to websocket (${e}). `);',
+            '// silenced benign vite hmr ws notice'
+          )
+          .replace(
+            'throw e;',
+            'return;'
+          );
+        res.setHeader('Content-Type', 'application/javascript');
+        return res.send(code);
+      } catch (err) {
+        return next();
+      }
+    });
+
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
