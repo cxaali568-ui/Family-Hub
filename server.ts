@@ -25,6 +25,9 @@ for (const key of badFirebaseKeys) {
     delete process.env[key];
   }
 }
+if (process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID === 'default' || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID === '(default)') {
+  delete process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
+}
 
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;

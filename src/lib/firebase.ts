@@ -4,7 +4,9 @@ import { initializeFirestore, Firestore, doc, getDoc } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Safely load optional fallback config if present in local workspace without breaking builds if absent
-const fallbackModules = (import.meta as any).glob('/*firebase-applet-config.json', { eager: true }) as Record<string, any>;
+const fallbackModules = typeof (import.meta as any).glob === 'function'
+  ? ((import.meta as any).glob('/*firebase-applet-config.json', { eager: true }) as Record<string, any>)
+  : {};
 const appletConfig: Record<string, any> = Object.values(fallbackModules)[0]?.default || Object.values(fallbackModules)[0] || {};
 
 // Safely resolve config value: prioritize VITE_FIREBASE_* environment variables, falling back to local config
@@ -38,13 +40,29 @@ if (!getApps().length) {
 export const auth: Auth = getAuth(app);
 
 // Use standard Firestore with provisioned databaseId (from env or appletConfig) and auto-detect long polling
-const databaseId = resolveConfig(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID, appletConfig.firestoreDatabaseId);
+const rawDatabaseId = resolveConfig(
+  import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
+  appletConfig.firestoreDatabaseId
+).trim();
+
+// In Google Cloud Firestore, the primary database is named '(default)' (with parentheses).
+// In the Firebase JS SDK, connecting to the primary database is specified by passing undefined.
+// Passing the unparenthesized string 'default' triggers: "Database 'default' not found".
+const isDefaultDatabase =
+  !rawDatabaseId ||
+  rawDatabaseId === 'default' ||
+  rawDatabaseId === '(default)' ||
+  rawDatabaseId === '""' ||
+  rawDatabaseId === "''";
+
+const databaseId = isDefaultDatabase ? undefined : rawDatabaseId;
+
 export const db: Firestore = initializeFirestore(
   app,
   {
     experimentalAutoDetectLongPolling: true,
   },
-  databaseId && databaseId !== '(default)' ? databaseId : undefined
+  databaseId
 );
 
 export const storage: FirebaseStorage = getStorage(app);
