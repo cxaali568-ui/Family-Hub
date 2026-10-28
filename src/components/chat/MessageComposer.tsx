@@ -248,8 +248,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors disabled:opacity-40"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors disabled:opacity-40 cursor-pointer"
           title="Attach Photo or Document"
+          aria-label="Attach Photo or Document"
         >
           <Paperclip className="w-5 h-5" />
         </button>
@@ -259,8 +260,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2.5 rounded-xl text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors cursor-pointer"
             title="Emoji"
+            aria-label="Insert Emoji"
           >
             <Smile className="w-5 h-5" />
           </button>
@@ -290,7 +292,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
           placeholder={t.chat.inputPlaceholder || 'Message your family...'}
-          className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 resize-none max-h-32 min-h-[44px]"
+          className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 resize-none max-h-32 min-h-[44px]"
         />
 
         {/* Send Button */}
@@ -298,8 +300,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           type="button"
           onClick={handleSend}
           disabled={(!text.trim() && pendingAttachments.length === 0) || isUploading || isSending}
-          className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0 active:scale-95"
           title="Send message"
+          aria-label="Send message"
         >
           {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
         </button>

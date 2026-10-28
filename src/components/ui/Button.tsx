@@ -29,10 +29,10 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizes = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5 min-h-[34px]',
-    md: 'text-sm px-4 py-2.5 gap-2 min-h-[42px]',
+    sm: 'text-xs px-3 py-1.5 gap-1.5 min-h-[36px]',
+    md: 'text-sm px-4 py-2.5 gap-2 min-h-[44px]',
     lg: 'text-base px-5 py-3 gap-2.5 min-h-[48px]',
-    icon: 'p-2 min-h-[38px] min-w-[38px]',
+    icon: 'p-2 min-h-[44px] min-w-[44px] flex items-center justify-center',
   };
 
   return (

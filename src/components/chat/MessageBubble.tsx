@@ -143,13 +143,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Reply Quote Banner */}
           {message.replyTo && (
             <div
-              className={`text-xs px-3 py-1.5 mb-1 rounded-xl border-l-3 transition-colors ${
+              className={`text-xs px-3 py-1.5 mb-1 rounded-xl border transition-colors ${
                 isCurrentUser
-                  ? 'bg-indigo-700/50 border-white text-indigo-100 self-end text-right'
-                  : 'bg-slate-100 dark:bg-slate-800/80 border-indigo-500 text-slate-600 dark:text-slate-300'
+                  ? 'bg-indigo-700/60 border-indigo-400/40 text-indigo-100 self-end text-right'
+                  : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
               }`}
             >
-              <div className="font-semibold text-[11px] opacity-90 truncate">
+              <div className="font-bold text-[10px] uppercase tracking-wide opacity-90 truncate">
                 {message.replyTo.senderName}
               </div>
               <div className="truncate max-w-xs text-[11px] opacity-80">
