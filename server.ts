@@ -52,13 +52,17 @@ async function verifyAuth(req: Request): Promise<AuthUser | null> {
   }
 
   try {
-    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-    let firebaseApiKey = '';
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      firebaseApiKey = config.apiKey || '';
-    } catch {
-      // fallback
+    let firebaseApiKey = process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || '';
+    if (!firebaseApiKey) {
+      try {
+        const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          firebaseApiKey = config.apiKey || '';
+        }
+      } catch {
+        // fallback
+      }
     }
 
     if (!firebaseApiKey) {

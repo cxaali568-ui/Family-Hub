@@ -2,11 +2,14 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { initializeFirestore, Firestore, doc, getDoc } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import appletConfig from '../../firebase-applet-config.json';
 
-// Safely resolve config value: ignore dummy "1" overrides, empty strings, and old stale project overrides
-const resolveConfig = (envVal: string | undefined, defaultVal: string) => {
-  return envVal && envVal !== '1' && envVal.trim() !== '' ? envVal : defaultVal;
+// Safely load optional fallback config if present in local workspace without breaking builds if absent
+const fallbackModules = (import.meta as any).glob('/*firebase-applet-config.json', { eager: true }) as Record<string, any>;
+const appletConfig: Record<string, any> = Object.values(fallbackModules)[0]?.default || Object.values(fallbackModules)[0] || {};
+
+// Safely resolve config value: prioritize VITE_FIREBASE_* environment variables, falling back to local config
+const resolveConfig = (envVal: string | undefined, defaultVal?: string): string => {
+  return envVal && envVal !== '1' && envVal.trim() !== '' ? envVal : (defaultVal || '');
 };
 
 const firebaseConfig = {
@@ -34,8 +37,8 @@ if (!getApps().length) {
 
 export const auth: Auth = getAuth(app);
 
-// Use standard Firestore with provisioned databaseId and auto-detect long polling
-const databaseId = (appletConfig as any).firestoreDatabaseId;
+// Use standard Firestore with provisioned databaseId (from env or appletConfig) and auto-detect long polling
+const databaseId = resolveConfig(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID, appletConfig.firestoreDatabaseId);
 export const db: Firestore = initializeFirestore(
   app,
   {
