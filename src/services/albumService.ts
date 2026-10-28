@@ -5,11 +5,12 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  deleteField,
   query,
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
 import { PhotoAlbum, AlbumCategory, User } from '../types';
 import { familyService } from './familyService';
 
@@ -95,7 +96,7 @@ class AlbumService {
     const newDoc = doc(colRef);
     const now = new Date().toISOString();
 
-    const album: PhotoAlbum = {
+    const albumRecord: Record<string, any> = {
       id: newDoc.id,
       familyId,
       name: data.name.trim(),
@@ -103,29 +104,31 @@ class AlbumService {
       category: data.category || 'Family',
       albumDate: data.albumDate || now.split('T')[0],
       location: data.location?.trim() || '',
-      coverPhotoId: undefined,
-      coverPhotoUrl: undefined,
       isArchived: false,
       photoCount: 0,
-      restrictedMemberIds: data.restrictedMemberIds || undefined,
       createdBy: currentUser.id,
       createdByName: currentUser.name,
       createdAt: now,
       updatedAt: now,
     };
 
-    await setDoc(newDoc, album);
+    if (data.restrictedMemberIds && data.restrictedMemberIds.length > 0) {
+      albumRecord.restrictedMemberIds = data.restrictedMemberIds;
+    }
+
+    const cleanAlbum = cleanFirestoreData(albumRecord) as PhotoAlbum;
+    await setDoc(newDoc, cleanAlbum);
 
     await familyService.logActivity({
       actorUserId: currentUser.id,
       actorName: currentUser.name,
       familyId,
-      action: `Created album: "${album.name}"`,
+      action: `Created album: "${cleanAlbum.name}"`,
       entityType: 'photo_album',
-      entityId: album.id,
+      entityId: cleanAlbum.id,
     });
 
-    return album;
+    return cleanAlbum;
   }
 
   /**
@@ -140,10 +143,20 @@ class AlbumService {
     const docRef = doc(db, 'families', familyId, 'albums', albumId);
     const now = new Date().toISOString();
 
-    await updateDoc(docRef, {
-      ...updates,
+    const patch: Record<string, any> = {
       updatedAt: now,
-    });
+    };
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === undefined) {
+        // If undefined is explicitly passed (e.g. to clear coverPhotoId/coverPhotoUrl), use deleteField()
+        patch[key] = deleteField();
+      } else {
+        patch[key] = value;
+      }
+    }
+
+    await updateDoc(docRef, patch);
 
     await familyService.logActivity({
       actorUserId: currentUser.id,

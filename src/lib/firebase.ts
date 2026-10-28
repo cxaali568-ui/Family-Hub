@@ -83,3 +83,40 @@ export async function testConnection(): Promise<boolean> {
   }
 }
 
+/**
+ * Recursively cleans an object for Firestore writes, stripping any properties with `undefined` values.
+ * Firestore strictly rejects `undefined` with "Unsupported field value: undefined".
+ * Preserves Dates, Timestamps, Firestore FieldValues (such as serverTimestamp() and deleteField()),
+ * primitives, and arrays.
+ */
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Preserve Dates, Firestore FieldValues, and Timestamps
+  if (
+    obj instanceof Date ||
+    typeof (obj as any).toMillis === 'function' ||
+    (obj as any)._methodName ||
+    typeof (obj as any).isEqual === 'function'
+  ) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => cleanFirestoreData(item)) as unknown as T;
+  }
+
+  const result: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      result[key] = cleanFirestoreData(val);
+    }
+  }
+  return result as T;
+}
+
+

@@ -17,7 +17,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
 import {
   PersonalProfile,
   PersonalExpense,
@@ -125,7 +125,7 @@ class PersonalService {
       ...expense,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
@@ -135,7 +135,7 @@ class PersonalService {
     updates: Partial<PersonalExpense>
   ): Promise<void> {
     const docRef = doc(db, 'personalExpenses', id);
-    await updateDoc(docRef, { ...updates });
+    await updateDoc(docRef, cleanFirestoreData({ ...updates }));
   }
 
   async deleteExpense(ownerId: string, id: string): Promise<void> {
@@ -184,7 +184,7 @@ class PersonalService {
       ...item,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(docRef, newItem);
+    await setDoc(docRef, cleanFirestoreData(newItem));
     return newItem;
   }
 
@@ -194,7 +194,7 @@ class PersonalService {
     updates: Partial<PersonalSchoolWorkItem>
   ): Promise<void> {
     const docRef = doc(db, 'personalSchoolWork', id);
-    await updateDoc(docRef, { ...updates });
+    await updateDoc(docRef, cleanFirestoreData({ ...updates }));
   }
 
   async deleteSchoolWorkItem(ownerId: string, id: string): Promise<void> {
@@ -242,16 +242,16 @@ class PersonalService {
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
   async updateNote(ownerId: string, id: string, updates: Partial<PersonalNote>): Promise<void> {
     const docRef = doc(db, 'personalNotes', id);
-    await updateDoc(docRef, {
+    await updateDoc(docRef, cleanFirestoreData({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   }
 
   async deleteNote(ownerId: string, id: string): Promise<void> {
@@ -301,7 +301,7 @@ class PersonalService {
       ...need,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
@@ -311,7 +311,7 @@ class PersonalService {
     updates: Partial<PersonalDailyNeed>
   ): Promise<void> {
     const docRef = doc(db, 'personalNeeds', id);
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, cleanFirestoreData(updates));
   }
 
   async deleteDailyNeed(ownerId: string, id: string): Promise<void> {
@@ -359,16 +359,16 @@ class PersonalService {
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
   async updatePlan(ownerId: string, id: string, updates: Partial<PersonalPlan>): Promise<void> {
     const docRef = doc(db, 'personalPlans', id);
-    await updateDoc(docRef, {
+    await updateDoc(docRef, cleanFirestoreData({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   }
 
   async deletePlan(ownerId: string, id: string): Promise<void> {
@@ -417,7 +417,7 @@ class PersonalService {
       ...reminder,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
@@ -427,7 +427,7 @@ class PersonalService {
     updates: Partial<PersonalReminder>
   ): Promise<void> {
     const docRef = doc(db, 'personalReminders', id);
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, cleanFirestoreData(updates));
   }
 
   async deleteReminder(ownerId: string, id: string): Promise<void> {
@@ -489,7 +489,7 @@ class PersonalService {
       updatedAt: now,
     };
 
-    await setDoc(docRef, item);
+    await setDoc(docRef, cleanFirestoreData(item));
     return item;
   }
 
@@ -592,7 +592,7 @@ class PersonalService {
       createdAt: new Date().toISOString(),
     };
 
-    await setDoc(docRef, photo);
+    await setDoc(docRef, cleanFirestoreData(photo));
     return photo;
   }
 
@@ -606,7 +606,7 @@ class PersonalService {
       photoCount: 0,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(docRef, album);
+    await setDoc(docRef, cleanFirestoreData(album));
     return album;
   }
 
@@ -671,7 +671,7 @@ class PersonalService {
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(docRef, conv);
+    await setDoc(docRef, cleanFirestoreData(conv));
     return conv;
   }
 
@@ -681,10 +681,10 @@ class PersonalService {
     updates: Partial<PersonalAIConversation>
   ): Promise<void> {
     const docRef = doc(db, 'personalAIConversations', id);
-    await updateDoc(docRef, {
+    await updateDoc(docRef, cleanFirestoreData({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   }
 
   async deleteAIConversation(ownerId: string, id: string): Promise<void> {

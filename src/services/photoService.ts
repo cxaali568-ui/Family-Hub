@@ -18,7 +18,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
 import { FamilyPhoto, User } from '../types';
 import { albumService } from './albumService';
 import { familyService } from './familyService';
@@ -220,7 +220,7 @@ class PhotoService {
       updatedAt: now,
     };
 
-    await setDoc(newDoc, photo);
+    await setDoc(newDoc, cleanFirestoreData(photo));
 
     // Adjust album photo count and set cover if album has no cover photo
     await albumService.adjustPhotoCount(familyId, albumId, 1);
@@ -280,10 +280,12 @@ class PhotoService {
     const docRef = doc(db, 'families', familyId, 'albums', albumId, 'photos', photoId);
     const now = new Date().toISOString();
 
-    await updateDoc(docRef, {
+    const patch: Record<string, any> = {
       ...updates,
       updatedAt: now,
-    });
+    };
+
+    await updateDoc(docRef, cleanFirestoreData(patch));
 
     await familyService.logActivity({
       actorUserId: currentUser.id,
@@ -409,7 +411,7 @@ class PhotoService {
     };
 
     // Write to target album
-    await setDoc(targetRef, updatedPhoto);
+    await setDoc(targetRef, cleanFirestoreData(updatedPhoto));
     // Mark deleted in source album or remove
     await updateDoc(sourceRef, {
       deletedAt: now,

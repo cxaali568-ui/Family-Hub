@@ -16,7 +16,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
 import {
   FamilyNote,
   NoteType,
@@ -176,7 +176,7 @@ class NoteService {
       updatedAt: now,
     };
 
-    await setDoc(newDoc, note);
+    await setDoc(newDoc, cleanFirestoreData(note));
 
     // Audit log
     await familyService.logActivity({
@@ -270,7 +270,7 @@ class NoteService {
       patch['reminder.notified'] = false;
     }
 
-    await updateDoc(docRef, patch);
+    await updateDoc(docRef, cleanFirestoreData(patch));
 
     await familyService.logActivity({
       actorUserId: currentUser.id,
