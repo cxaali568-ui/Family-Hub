@@ -13,8 +13,9 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
   variant = 'button',
   className = '',
 }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { isInstallable, isInstalled, isIOS, isAndroid, install } = usePWAInstall();
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [showAndroidModal, setShowAndroidModal] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
 
   // If already running inside installed standalone PWA, suppress the prompt
@@ -22,8 +23,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
     return null;
   }
 
-  // If neither standard install prompt nor iOS device, suppress
-  if (!isInstallable && !isIOS) {
+  // If neither standard install prompt nor mobile device, suppress
+  if (!isInstallable && !isIOS && !isAndroid) {
     return null;
   }
 
@@ -39,6 +40,11 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
       } finally {
         setIsInstalling(false);
       }
+      return;
+    }
+    if (isAndroid) {
+      setShowAndroidModal(true);
+      return;
     }
   };
 
@@ -176,6 +182,72 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
               <Button
                 variant="primary"
                 onClick={() => setShowIOSModal(false)}
+                className="w-full font-bold"
+              >
+                Got It
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Guided Android Instructions Modal (when native 1-tap banner is delayed or dismissed) */}
+      {showAndroidModal && (
+        <Modal
+          isOpen={showAndroidModal}
+          onClose={() => setShowAndroidModal(false)}
+          title="Install FamilyHub on Android"
+          subtitle="Add FamilyHub to your Android Home Screen and App Drawer"
+          maxWidth="sm"
+        >
+          <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300">
+            <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-3">
+              <img src="/pwa-192x192.png" alt="FamilyHub" className="w-12 h-12 rounded-xl shadow-xs" />
+              <div>
+                <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">FamilyHub PWA</h4>
+                <p className="text-[11px] text-slate-500">Full-Screen Android Experience</p>
+              </div>
+            </div>
+
+            <ol className="space-y-3 font-medium">
+              <li className="flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs shrink-0">
+                  1
+                </span>
+                <div>
+                  <p className="leading-relaxed">
+                    Tap the <strong>three dots menu (⋮)</strong> in the top-right corner of Chrome, Samsung Internet, or your browser.
+                  </p>
+                </div>
+              </li>
+
+              <li className="flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs shrink-0">
+                  2
+                </span>
+                <div>
+                  <p className="leading-relaxed">
+                    Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong> from the menu options.
+                  </p>
+                </div>
+              </li>
+
+              <li className="flex items-start gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs shrink-0">
+                  3
+                </span>
+                <div>
+                  <p className="leading-relaxed">
+                    Confirm <strong>Install</strong>. FamilyHub will be added to your Android Home Screen and App Drawer, opening full-screen with offline caching!
+                  </p>
+                </div>
+              </li>
+            </ol>
+
+            <div className="pt-2">
+              <Button
+                variant="primary"
+                onClick={() => setShowAndroidModal(false)}
                 className="w-full font-bold"
               >
                 Got It
