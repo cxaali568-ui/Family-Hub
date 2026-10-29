@@ -16,16 +16,25 @@ export const FamilyUrgentView: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<UrgentItem['severity']>('alert');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSubmitting) return;
 
-    addUrgentItem(title.trim(), description.trim(), severity);
-
-    setTitle('');
-    setDescription('');
-    setIsAddOpen(false);
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await addUrgentItem(title.trim(), description.trim(), severity);
+      setTitle('');
+      setDescription('');
+      setIsAddOpen(false);
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to broadcast urgent alert. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -158,11 +167,18 @@ export const FamilyUrgentView: React.FC = () => {
             />
           </div>
 
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="ghost" type="button" onClick={() => setIsAddOpen(false)}>
+            <Button variant="ghost" type="button" onClick={() => setIsAddOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button variant="danger" type="submit">
+            <Button variant="danger" type="submit" loading={isSubmitting} disabled={isSubmitting}>
               Send Alert
             </Button>
           </div>

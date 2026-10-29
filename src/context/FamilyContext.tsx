@@ -14,6 +14,7 @@ import {
   ActivityLog,
 } from '../types';
 import { familyService } from '../services/familyService';
+import { noteService } from '../services/noteService';
 import { useAuth } from './AuthContext';
 
 export interface FamilyPermissions {
@@ -55,10 +56,10 @@ interface FamilyContextType {
   notes: FamilyNote[];
   addExpense: (expense: Omit<FamilyExpense, 'id' | 'familyId'>) => void;
   toggleBillPaid: (billId: string) => void;
-  addUrgentItem: (title: string, description: string, severity?: UrgentItem['severity']) => void;
-  resolveUrgentItem: (id: string) => void;
+  addUrgentItem: (title: string, description: string, severity?: UrgentItem['severity']) => Promise<void> | void;
+  resolveUrgentItem: (id: string) => Promise<void> | void;
   addPlan: (plan: Omit<FamilyPlan, 'id' | 'familyId'>) => void;
-  addNote: (title: string, content: string, category?: FamilyNote['category']) => void;
+  addNote: (title: string, content: string, category?: FamilyNote['category']) => Promise<void> | void;
   refreshFamilyData: () => Promise<void>;
 }
 
@@ -195,9 +196,29 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     );
 
+    // Real-time subscription to notes and urgent items from Firestore
+    const unsubNotes = noteService.subscribeNotes(currentFamily.id, (loadedNotes) => {
+      setNotes(loadedNotes);
+      const urgent = loadedNotes
+        .filter(n => (n.type === 'urgent' || n.priority === 'urgent' || n.priority === 'critical') && n.status !== 'completed' && !n.isArchived)
+        .map(n => ({
+          id: n.id,
+          familyId: n.familyId,
+          title: n.title,
+          description: n.description || n.content || '',
+          severity: (n.priority === 'critical' ? 'critical' : n.priority === 'urgent' ? 'urgent' : 'alert') as UrgentItem['severity'],
+          createdByUserId: n.createdBy,
+          createdByName: n.createdByName || n.authorName || 'Family Member',
+          createdAt: n.createdAt,
+          resolved: n.status === 'completed',
+        }));
+      setUrgentItems(urgent);
+    });
+
     return () => {
       unsubMembers();
       unsubActivities();
+      unsubNotes();
     };
   }, [currentFamily?.id, user?.id]);
 
@@ -298,9 +319,9 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   };
 
-  const addUrgentItem = (title: string, description: string, severity: UrgentItem['severity'] = 'urgent') => {
+  const addUrgentItem = async (title: string, description: string, severity: UrgentItem['severity'] = 'urgent') => {
     if (!currentFamily || !user) return;
-    const item: UrgentItem = {
+    const optimisticItem: UrgentItem = {
       id: `urg-${Date.now()}`,
       familyId: currentFamily.id,
       title,
@@ -311,11 +332,38 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdAt: new Date().toISOString(),
       resolved: false,
     };
-    setUrgentItems(prev => [item, ...prev]);
+    setUrgentItems(prev => [optimisticItem, ...prev]);
+
+    try {
+      await noteService.addNote(
+        currentFamily.id,
+        {
+          type: 'urgent',
+          title,
+          description,
+          categoryId: 'urgent',
+          categoryName: 'Urgent Needs',
+          priority: severity === 'critical' ? 'critical' : severity === 'urgent' ? 'urgent' : 'normal',
+          status: 'pending',
+          notifyFamily: true,
+        },
+        user
+      );
+    } catch (err) {
+      console.error('Error persisting urgent item to Firestore:', err);
+      setUrgentItems(prev => prev.filter(u => u.id !== optimisticItem.id));
+      throw err;
+    }
   };
 
-  const resolveUrgentItem = (id: string) => {
+  const resolveUrgentItem = async (id: string) => {
+    if (!currentFamily || !user) return;
     setUrgentItems(prev => prev.filter(u => u.id !== id));
+    try {
+      await noteService.updateStatus(currentFamily.id, id, 'completed', user);
+    } catch (err) {
+      console.error('Error resolving urgent item in Firestore:', err);
+    }
   };
 
   const addPlan = (plan: Omit<FamilyPlan, 'id' | 'familyId'>) => {
@@ -324,19 +372,42 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setPlans(prev => [...prev, p]);
   };
 
-  const addNote = (title: string, content: string, category: FamilyNote['category'] = 'general') => {
+  const addNote = async (title: string, content: string, category: FamilyNote['category'] = 'general') => {
     if (!currentFamily || !user) return;
-    const n: FamilyNote = {
+    const optimisticNote: FamilyNote = {
       id: `note-${Date.now()}`,
       familyId: currentFamily.id,
       title,
       content,
+      description: content,
       category,
       isPinned: false,
       updatedAt: new Date().toISOString(),
       authorName: user.name,
+      createdBy: user.id,
+      createdByName: user.name,
+      createdAt: new Date().toISOString(),
     };
-    setNotes(prev => [n, ...prev]);
+    setNotes(prev => [optimisticNote, ...prev]);
+
+    try {
+      await noteService.addNote(
+        currentFamily.id,
+        {
+          type: 'general',
+          title,
+          description: content,
+          categoryId: category || 'general',
+          categoryName: category ? category.charAt(0).toUpperCase() + category.slice(1) : 'General',
+          status: 'pending',
+        },
+        user
+      );
+    } catch (err) {
+      console.error('Error persisting note to Firestore:', err);
+      setNotes(prev => prev.filter(n => n.id !== optimisticNote.id));
+      throw err;
+    }
   };
 
   return (

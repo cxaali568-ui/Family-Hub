@@ -111,14 +111,8 @@ class EventService {
       assignedMemberIds: eventData.assignedMemberIds || [],
     };
 
-    // Clean undefined fields for Firestore
-    const cleanEvent: any = { ...event };
-    Object.keys(cleanEvent).forEach((key) => {
-      if (cleanEvent[key] === undefined) {
-        delete cleanEvent[key];
-      }
-    });
-
+    // Recursively clean undefined fields for Firestore to prevent errors
+    const cleanEvent = cleanFirestoreData(event);
     await setDoc(newDoc, cleanEvent);
 
     // Audit log
@@ -160,15 +154,9 @@ class EventService {
     const docRef = doc(db, 'families', familyId, 'events', eventId);
     const now = new Date().toISOString();
 
-    const cleanUpdates: any = {
+    const cleanUpdates = cleanFirestoreData({
       ...updates,
       updatedAt: now,
-    };
-
-    Object.keys(cleanUpdates).forEach((key) => {
-      if (cleanUpdates[key] === undefined) {
-        delete cleanUpdates[key];
-      }
     });
 
     await updateDoc(docRef, cleanUpdates);
@@ -254,11 +242,7 @@ class EventService {
       assignedMemberIds: reminderData.assignedMemberIds || [],
     };
 
-    const cleanReminder: any = { ...reminder };
-    Object.keys(cleanReminder).forEach((k) => {
-      if (cleanReminder[k] === undefined) delete cleanReminder[k];
-    });
-
+    const cleanReminder = cleanFirestoreData(reminder);
     await setDoc(newDoc, cleanReminder);
 
     await familyService.logActivity({
@@ -285,18 +269,12 @@ class EventService {
     const docRef = doc(db, 'families', familyId, 'reminders', reminderId);
     const now = new Date().toISOString();
 
-    const updates: any = {
+    const updates = cleanFirestoreData({
       status,
       updatedAt: now,
-    };
-
-    if (status === 'completed') {
-      updates.completedAt = now;
-      updates.completedBy = currentUser.id;
-    } else {
-      updates.completedAt = null;
-      updates.completedBy = null;
-    }
+      completedAt: status === 'completed' ? now : null,
+      completedBy: status === 'completed' ? currentUser.id : null,
+    });
 
     await updateDoc(docRef, updates);
   }
@@ -310,7 +288,7 @@ class EventService {
   }
 
   /**
-   * Upload an attachment for an event
+   * Upload an attachment for an event and persist reference to the event document
    */
   async uploadAttachment(
     familyId: string,
@@ -318,7 +296,7 @@ class EventService {
     file: File
   ): Promise<{ id: string; name: string; url: string; size: number }> {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `families/${familyId}/planner/${eventId}/attachments/${Date.now()}_${safeName}`;
+    const path = `families/${familyId}/planner/${eventId || 'general'}/attachments/${Date.now()}_${safeName}`;
 
     const res = await uploadFileResilient({
       storagePath: path,
@@ -327,12 +305,32 @@ class EventService {
       contentType: file.type || 'application/octet-stream',
     });
 
-    return {
+    const attachment = {
       id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: file.name,
       url: res.downloadUrl,
       size: file.size,
     };
+
+    // If eventId exists and is an existing document, update the event's attachments array in Firestore
+    if (eventId && eventId !== 'general' && eventId !== 'temp') {
+      try {
+        const eventRef = doc(db, 'families', familyId, 'events', eventId);
+        const eventSnap = await getDoc(eventRef);
+        if (eventSnap.exists()) {
+          const currentData = eventSnap.data() as FamilyEvent;
+          const currentAttachments = currentData.attachments || [];
+          await updateDoc(eventRef, {
+            attachments: [...currentAttachments, attachment],
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.warn('Could not update event document with attachment:', err);
+      }
+    }
+
+    return attachment;
   }
 
   /**
