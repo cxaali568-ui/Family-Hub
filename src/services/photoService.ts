@@ -14,11 +14,10 @@ import {
 } from 'firebase/firestore';
 import {
   ref,
-  uploadBytesResumable,
-  getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
 import { db, storage, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { FamilyPhoto, User } from '../types';
 import { albumService } from './albumService';
 import { familyService } from './familyService';
@@ -149,48 +148,32 @@ class PhotoService {
       console.warn('Image processing fallback to raw file:', e);
     }
 
-    // Step 2: Upload original/display file to Firebase Storage
-    const storageRef = ref(storage, originalStoragePath);
-    const uploadTask = uploadBytesResumable(storageRef, displayBlob, {
+    // Step 2: Upload original/display file
+    const uploadRes = await uploadFileResilient({
+      storagePath: originalStoragePath,
+      file: displayBlob,
+      fileName: file.name,
       contentType: file.type || 'image/jpeg',
+      onProgress: (pct) => {
+        if (onProgress) onProgress(Math.round(pct * 0.85));
+      },
     });
-
-    let downloadUrl: string;
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snap) => {
-            if (onProgress && snap.totalBytes > 0) {
-              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 90);
-              onProgress(pct);
-            }
-          },
-          (err) => reject(err),
-          () => resolve()
-        );
-      });
-      downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-    } catch {
-      // Fallback for mock/test environments
-      downloadUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    }
+    const downloadUrl = uploadRes.downloadUrl;
 
     // Step 3: Upload thumbnail
     let thumbnailUrl: string = downloadUrl;
     try {
-      const thumbRef = ref(storage, thumbStoragePath);
-      const thumbSnap = await uploadBytesResumable(thumbRef, thumbBlob, {
-        contentType: 'image/jpeg',
-      });
-      thumbnailUrl = await getDownloadURL(thumbSnap.ref);
+      if (!uploadRes.isFallback) {
+        const thumbRes = await uploadFileResilient({
+          storagePath: thumbStoragePath,
+          file: thumbBlob,
+          fileName: `thumb_${file.name}`,
+          contentType: 'image/jpeg',
+          timeoutMs: 4000,
+        });
+        thumbnailUrl = thumbRes.downloadUrl;
+      }
     } catch {
-      // If thumbnail upload fails, fallback to main downloadUrl
       thumbnailUrl = downloadUrl;
     }
 

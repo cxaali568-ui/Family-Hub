@@ -37,6 +37,7 @@ export const PersonalDocuments: React.FC = () => {
   const [uploadCategory, setUploadCategory] = useState<PersonalFile['category']>('documents');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Rename modal
   const [renamingFile, setRenamingFile] = useState<PersonalFile | null>(null);
@@ -47,14 +48,16 @@ export const PersonalDocuments: React.FC = () => {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setUploading(true);
+    setUploadError(null);
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         await uploadFile(selectedFiles[i], uploadCategory);
       }
       setIsUploadOpen(false);
       setSelectedFiles(null);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Could not upload file:', err);
+      setUploadError(err?.message || 'Could not upload file. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -255,6 +258,12 @@ export const PersonalDocuments: React.FC = () => {
               required
             />
           </div>
+
+          {uploadError && (
+            <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-600 font-medium">
+              {uploadError}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsUploadOpen(false)}>

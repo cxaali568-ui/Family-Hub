@@ -11,12 +11,8 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import {
   FamilyEvent,
   FamilyReminder,
@@ -323,15 +319,18 @@ class EventService {
   ): Promise<{ id: string; name: string; url: string; size: number }> {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `families/${familyId}/planner/${eventId}/attachments/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, path);
 
-    const snapshot = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(snapshot.ref);
+    const res = await uploadFileResilient({
+      storagePath: path,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+    });
 
     return {
       id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: file.name,
-      url,
+      url: res.downloadUrl,
       size: file.size,
     };
   }

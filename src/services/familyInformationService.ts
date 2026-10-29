@@ -6,12 +6,8 @@ import {
   deleteDoc,
   onSnapshot,
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { FamilyInformation, FamilyInfoCategory, NoteAttachment, User } from '../types';
 import { familyService } from './familyService';
 
@@ -184,27 +180,21 @@ class FamilyInformationService {
   ): Promise<NoteAttachment> {
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/information/${infoId}/attachments/${Date.now()}_${cleanFileName}`;
-    const storageRef = ref(storage, storagePath);
 
-    let downloadUrl: string;
-    try {
-      const snap = await uploadBytesResumable(storageRef, file);
-      downloadUrl = await getDownloadURL(snap.ref);
-    } catch {
-      downloadUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    }
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+    });
 
     const attachment: NoteAttachment = {
       id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type || 'application/octet-stream',
-      url: downloadUrl,
-      storagePath,
+      url: res.downloadUrl,
+      storagePath: res.storagePath,
       uploadedAt: new Date().toISOString(),
       uploadedBy: currentUser.id,
       uploadedByName: currentUser.name,

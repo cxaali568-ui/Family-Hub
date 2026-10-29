@@ -30,6 +30,7 @@ export const PersonalPhotos: React.FC = () => {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // New Album state
   const [albumTitle, setAlbumTitle] = useState('');
@@ -40,6 +41,7 @@ export const PersonalPhotos: React.FC = () => {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setUploading(true);
+    setUploadError(null);
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         await uploadPhoto(selectedFiles[i], selectedAlbumId || undefined, caption || undefined);
@@ -47,8 +49,9 @@ export const PersonalPhotos: React.FC = () => {
       setIsUploadOpen(false);
       setSelectedFiles(null);
       setCaption('');
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Could not upload photos:', err);
+      setUploadError(err?.message || 'Could not upload photos. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -207,6 +210,12 @@ export const PersonalPhotos: React.FC = () => {
               required
             />
           </div>
+
+          {uploadError && (
+            <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-600 font-medium">
+              {uploadError}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsUploadOpen(false)}>

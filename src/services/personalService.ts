@@ -13,11 +13,10 @@ import {
 } from 'firebase/firestore';
 import {
   ref,
-  uploadBytesResumable,
-  getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
 import { db, storage, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import {
   PersonalProfile,
   PersonalExpense,
@@ -470,10 +469,12 @@ class PersonalService {
     const docRef = doc(collection(db, 'personalFiles'));
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `users/${ownerId}/personal/documents/${docRef.id}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
-
-    const uploadTask = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(uploadTask.ref);
+    const uploadResult = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+    });
 
     const now = new Date().toISOString();
     const item: PersonalFile = {
@@ -482,8 +483,8 @@ class PersonalService {
       name: file.name,
       fileType: file.type || 'application/octet-stream',
       size: file.size,
-      storagePath,
-      url,
+      storagePath: uploadResult.storagePath,
+      url: uploadResult.downloadUrl,
       category,
       createdAt: now,
       updatedAt: now,
@@ -575,17 +576,19 @@ class PersonalService {
     const docRef = doc(collection(db, 'personalPhotos'));
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `users/${ownerId}/personal/photos/${docRef.id}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
-
-    const snapshot = await uploadBytesResumable(storageRef, file);
-    const url = await getDownloadURL(snapshot.ref);
+    const uploadResult = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
+    });
 
     const photo: PersonalPhoto = {
       id: docRef.id,
       ownerId,
       albumId: albumId || undefined,
-      url,
-      storagePath,
+      url: uploadResult.downloadUrl,
+      storagePath: uploadResult.storagePath,
       name: file.name,
       size: file.size,
       caption: caption || undefined,

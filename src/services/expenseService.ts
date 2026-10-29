@@ -12,11 +12,10 @@ import {
 } from 'firebase/firestore';
 import {
   ref,
-  uploadBytesResumable,
-  getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { Expense, ExpenseFilter, User } from '../types';
 import { familyService } from './familyService';
 
@@ -331,38 +330,15 @@ class ExpenseService {
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/expenses/${expenseId}/receipt/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
 
-    return new Promise((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        null,
-        async (error) => {
-          console.warn('Storage upload error for receipt, using fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () =>
-                resolve({ downloadUrl: reader.result as string, storagePath: 'base64_embedded' });
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve({ downloadUrl, storagePath });
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
     });
+
+    return { downloadUrl: res.downloadUrl, storagePath: res.storagePath };
   }
 
   /**

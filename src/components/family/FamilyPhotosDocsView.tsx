@@ -46,6 +46,7 @@ const FamilyDocumentsDashboard: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ const FamilyDocumentsDashboard: React.FC = () => {
     if (!currentFamily?.id || !user || !selectedFile) return;
 
     setUploading(true);
+    setUploadProgress(10);
     setUploadError(null);
 
     try {
@@ -87,16 +89,19 @@ const FamilyDocumentsDashboard: React.FC = () => {
         selectedFile,
         uploadTitle.trim(),
         uploadCategory,
-        user
+        user,
+        (pct) => setUploadProgress(pct)
       );
       setIsUploadOpen(false);
       setSelectedFile(null);
       setUploadTitle('');
       setUploadCategory('general');
+      setUploadProgress(0);
     } catch (err: any) {
       setUploadError(err?.message || 'Failed to upload document. Please try again.');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -311,6 +316,21 @@ const FamilyDocumentsDashboard: React.FC = () => {
               <option value="general">General</option>
             </select>
           </div>
+
+          {uploading && (
+            <div className="space-y-1.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50">
+              <div className="flex justify-between text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                <span>Uploading document securely...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-amber-200 dark:bg-amber-900 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-amber-600 dark:bg-amber-400 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.max(8, uploadProgress)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button

@@ -7,11 +7,10 @@ import {
 } from 'firebase/firestore';
 import {
   ref,
-  uploadBytesResumable,
-  getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { BillDocument, User } from '../types';
 
 class BillDocumentService {
@@ -59,39 +58,12 @@ class BillDocumentService {
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/bills/${billId}/documents/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
-
-    const downloadUrl = await new Promise<string>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          if (onProgress) onProgress(progress);
-        },
-        async (error) => {
-          console.warn('Storage error on bill document upload, using fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      onProgress,
     });
 
     const docColRef = collection(db, 'families', familyId, 'bills', billId, 'documents');
@@ -106,13 +78,13 @@ class BillDocumentService {
       docType,
       fileName: file.name,
       fileSize: file.size,
-      url: downloadUrl,
-      storagePath,
+      url: res.downloadUrl,
+      storagePath: res.storagePath,
       uploadedBy: currentUser.name,
       uploadedAt: now,
     };
 
-    await setDoc(newDoc, docRecord);
+    await setDoc(newDoc, cleanFirestoreData(docRecord));
     return docRecord;
   }
 

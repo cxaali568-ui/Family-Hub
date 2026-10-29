@@ -7,8 +7,9 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, storage, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { User } from '../types';
 
 export interface FamilyDocument {
@@ -75,7 +76,8 @@ export const documentService = {
     file: File,
     title: string,
     category: FamilyDocument['category'],
-    currentUser: User
+    currentUser: User,
+    onProgress?: (percent: number) => void
   ): Promise<FamilyDocument> {
     if (file.size > MAX_FILE_SIZE) {
       throw new Error('File size exceeds the 20MB limit.');
@@ -86,23 +88,15 @@ export const documentService = {
     }
 
     const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const storagePath = `families/${familyId}/documents/${docId}_${file.name}`;
-    let downloadUrl = '';
+    const storagePath = `families/${familyId}/documents/${docId}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-    try {
-      const storageRef = ref(storage, storagePath);
-      const snapshot = await uploadBytesResumable(storageRef, file, {
-        contentType: file.type || 'application/octet-stream',
-      });
-      downloadUrl = await getDownloadURL(snapshot.ref);
-    } catch {
-      // Offline / dataURL fallback
-      downloadUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    }
+    const uploadResult = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      onProgress,
+    });
 
     const newDoc: FamilyDocument = {
       id: docId,
@@ -111,8 +105,8 @@ export const documentService = {
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type || 'application/octet-stream',
-      url: downloadUrl,
-      storagePath,
+      url: uploadResult.downloadUrl,
+      storagePath: uploadResult.storagePath,
       category: category || 'general',
       uploadedBy: currentUser.name,
       uploadedById: currentUser.id,
@@ -120,7 +114,7 @@ export const documentService = {
     };
 
     const docRef = doc(db, 'families', familyId, 'documents', docId);
-    await setDoc(docRef, newDoc);
+    await setDoc(docRef, cleanFirestoreData(newDoc));
 
     return newDoc;
   },

@@ -16,6 +16,8 @@ interface AuthContextType {
   }) => Promise<User>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<User>;
+  uploadAvatar: (file: File, onProgress?: (p: number) => void) => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,6 +78,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await authService.forgotPassword(email);
   };
 
+  const updateProfile = async (updates: Partial<User>): Promise<User> => {
+    if (!user) throw new Error('Not logged in');
+    const updated = await authService.updateUserProfile(user.id, updates);
+    setUser(updated);
+    return updated;
+  };
+
+  const uploadAvatar = async (file: File, onProgress?: (p: number) => void): Promise<string> => {
+    if (!user) throw new Error('Not logged in');
+    const url = await authService.uploadUserAvatar(user.id, file, onProgress);
+    setUser((prev) => (prev ? { ...prev, avatar: url, profileImage: url } : null));
+    return url;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -86,6 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         forgotPassword,
+        updateProfile,
+        uploadAvatar,
       }}
     >
       {children}

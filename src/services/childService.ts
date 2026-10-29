@@ -11,12 +11,8 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import {
   Child,
   ChildGuardian,
@@ -218,41 +214,20 @@ class ChildService {
   }
 
   /**
-   * Uploads child photo to Firebase Storage
+   * Uploads child photo with deterministic timeout and fallback
    */
   async uploadChildPhoto(familyId: string, childId: string, file: File): Promise<string> {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/children/${childId}/profile/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
 
-    return new Promise((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        'state_changed',
-        null,
-        async (error) => {
-          console.warn('Child photo storage upload error, using fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
     });
+
+    return res.downloadUrl;
   }
 
   // --- Guardians Subcollection ---
@@ -379,38 +354,12 @@ class ChildService {
     const { familyId, childId, file, title, docType, currentUser, onProgress } = params;
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/children/${childId}/documents/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
-
-    const downloadUrl = await new Promise<string>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        'state_changed',
-        (snap) => {
-          const progress = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          if (onProgress) onProgress(progress);
-        },
-        async (error) => {
-          console.warn('Document storage upload error, using fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      onProgress,
     });
 
     const docCol = collection(db, 'families', familyId, 'children', childId, 'documents');
@@ -421,14 +370,14 @@ class ChildService {
       familyId,
       title: title.trim() || file.name,
       docType,
-      url: downloadUrl,
+      url: res.downloadUrl,
       fileName: file.name,
       fileSize: file.size,
       uploadedAt: new Date().toISOString(),
       uploadedBy: currentUser.name,
     };
 
-    await setDoc(newDoc, docData);
+    await setDoc(newDoc, cleanFirestoreData(docData));
 
     await familyService.logActivity({
       familyId,

@@ -11,12 +11,8 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { FamilyMemberProfile, User, FamilyMember, AppNotification } from '../types';
 import { familyService } from './familyService';
 
@@ -226,7 +222,7 @@ class MemberProfileService {
   }
 
   /**
-   * Uploads profile image to Firebase Storage with progress and data URL fallback
+   * Uploads profile image to Firebase Storage with deterministic timeout and high-quality data URL fallback
    */
   async uploadProfilePhoto(
     familyId: string,
@@ -236,40 +232,16 @@ class MemberProfileService {
   ): Promise<string> {
     const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/members/${memberId}/profile/${Date.now()}_${safeFileName}`;
-    const storageRef = ref(storage, storagePath);
 
-    return new Promise((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          if (onProgress) onProgress(progress);
-        },
-        async (error) => {
-          console.warn('Storage upload error, using fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
+      onProgress,
     });
+
+    return res.downloadUrl;
   }
 
   private async broadcastNotification(params: {

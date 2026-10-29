@@ -14,7 +14,8 @@ import {
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import { User, Role } from '../types';
 
 class AuthService {
@@ -191,6 +192,60 @@ class AuthService {
       console.warn("Could not fetch user profile:", err);
       return null;
     }
+  }
+
+  /**
+   * Uploads user avatar with deterministic timeout and fallback, updating Auth profile and Firestore doc
+   */
+  async uploadUserAvatar(
+    userId: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `users/${userId}/avatar/${Date.now()}_${safeName}`;
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
+      onProgress,
+    });
+
+    await this.updateUserProfile(userId, {
+      avatar: res.downloadUrl,
+      profileImage: res.downloadUrl,
+    });
+    return res.downloadUrl;
+  }
+
+  /**
+   * Updates user profile in Firebase Auth and Firestore document
+   */
+  async updateUserProfile(userId: string, updates: Partial<User>): Promise<User> {
+    const cleanUpdates = cleanFirestoreData({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (auth.currentUser && auth.currentUser.uid === userId) {
+      const fbUpdates: { displayName?: string; photoURL?: string } = {};
+      if (updates.name || updates.fullName) fbUpdates.displayName = updates.name || updates.fullName;
+      if (updates.avatar || updates.profileImage) fbUpdates.photoURL = updates.avatar || updates.profileImage;
+      if (Object.keys(fbUpdates).length > 0) {
+        try {
+          await updateProfile(auth.currentUser, fbUpdates);
+        } catch (e) {
+          console.warn("Could not sync Firebase Auth profile:", e);
+        }
+      }
+    }
+
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, cleanUpdates, { merge: true });
+
+    const updated = await this.getUserProfile(userId);
+    return updated || ({ id: userId, ...cleanUpdates } as User);
   }
 
   /**

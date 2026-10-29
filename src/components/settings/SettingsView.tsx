@@ -7,7 +7,9 @@ import { usePersonal } from '../../context/PersonalContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Settings, Globe, Moon, Sun, Monitor, Lock, Shield, Users, Key, Copy, Check, LogOut, Smartphone } from 'lucide-react';
+import { Avatar } from '../ui/Avatar';
+import { UserProfileModal } from '../profile/UserProfileModal';
+import { Settings, Globe, Moon, Sun, Monitor, Lock, Shield, Users, Key, Copy, Check, LogOut, Smartphone, User, Camera } from 'lucide-react';
 import { PWAInstallPrompt } from '../ui/PWAInstallPrompt';
 
 export const SettingsView: React.FC = () => {
@@ -20,6 +22,7 @@ export const SettingsView: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [pinInput, setPinInput] = useState('1234');
   const [pinSaved, setPinSaved] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleCopyCode = () => {
     if (!family?.inviteCode) return;
@@ -227,26 +230,59 @@ export const SettingsView: React.FC = () => {
           <PWAInstallPrompt variant="banner" />
         </Card>
 
-        {/* Account Info and Logout */}
+        {/* Account Info, Avatar, and Logout */}
         <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Logged in as {user?.name}
-            </h4>
-            <p className="text-xs text-slate-400">
-              {user?.email} • Role: {(user?.roleInFamily || 'Member').toUpperCase()}
-            </p>
+          <div className="flex items-center gap-3.5">
+            <div className="relative group cursor-pointer" onClick={() => setIsProfileModalOpen(true)}>
+              <Avatar
+                src={user?.avatar || user?.profileImage}
+                name={user?.name || 'User'}
+                size="md"
+                className="ring-2 ring-indigo-500/30"
+              />
+              <span className="absolute -bottom-1 -right-1 p-1 rounded-full bg-indigo-600 text-white text-[9px] shadow-sm">
+                <Camera className="w-2.5 h-2.5" />
+              </span>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                {user?.name || 'User'}
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                  {user?.roleInFamily || 'Member'}
+                </span>
+              </h4>
+              <p className="text-xs text-slate-400">
+                {user?.email}
+              </p>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={logout}
-            icon={<LogOut className="w-4 h-4 text-rose-500" />}
-            className="text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/40"
-          >
-            {t.auth.logout}
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="text-xs"
+            >
+              Edit Profile & Photo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              icon={<LogOut className="w-4 h-4 text-rose-500" />}
+              className="text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/40 text-xs"
+            >
+              {t.auth.logout}
+            </Button>
+          </div>
         </Card>
+
+        {/* User Personal Profile Modal */}
+        <UserProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+        />
       </div>
     );
   };

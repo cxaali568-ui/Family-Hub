@@ -33,6 +33,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { FamilyNavRoute } from '../../types';
+import { UserProfileModal } from '../profile/UserProfileModal';
+import { Chat3D, Family3D, Expenses3D, PersonalSpace3D } from '../ui/Icons3D';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -54,6 +56,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   // Exact navigation order specified in Step 10:
   // 1. Chat (MUST remain FIRST)
@@ -268,17 +271,26 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
 
           {/* User Profile & Sign Out Footer */}
           <div className="p-3 border-t border-slate-100 dark:border-slate-800/90 bg-slate-50/70 dark:bg-slate-900/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" status="online" />
+            <button
+              onClick={() => setProfileModalOpen(true)}
+              className="flex items-center gap-2.5 overflow-hidden text-left hover:opacity-85 transition-opacity cursor-pointer group flex-1"
+              title="Edit Profile & Photo"
+            >
+              <div className="relative">
+                <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" status="online" />
+                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px] shadow-sm">
+                  ✎
+                </span>
+              </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 transition-colors">
                   {user?.name || 'User'}
                 </p>
                 <p className="text-[10px] text-slate-400 truncate">
                   {user?.email}
                 </p>
               </div>
-            </div>
+            </button>
             <button
               onClick={logout}
               className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
@@ -313,7 +325,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <PWAInstallPrompt variant="button" className="text-[11px] py-1 px-2" />
               <button
                 onClick={() => setNotificationOpen(true)}
@@ -325,7 +337,14 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500" />
                 )}
               </button>
-              <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" />
+              <button
+                onClick={() => setProfileModalOpen(true)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:ring-2 hover:ring-indigo-500/50 transition-all cursor-pointer"
+                title="Edit Profile"
+                aria-label="Your Profile"
+              >
+                <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" />
+              </button>
             </div>
           </header>
 
@@ -335,59 +354,59 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
           </main>
 
           {/* ---------------- Mobile Bottom Navigation ---------------- */}
-          {/* Chat-first principle: Chat is permanently on the left thumb reach */}
-          <nav className="lg:hidden flex items-center justify-around bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-2 py-1 pb-safe z-20 shrink-0">
+          {/* Tactile 3D Dock: Chat is thumb-anchored on the left */}
+          <nav className="lg:hidden flex items-center justify-around bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-2 py-1.5 pb-safe z-20 shrink-0 shadow-lg shadow-slate-900/5">
             <button
               onClick={() => setCurrentRoute('chat')}
-              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
                 currentRoute === 'chat'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/70 dark:bg-indigo-950/50 shadow-inner'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
             >
-              <MessageSquare className="w-5 h-5 mb-0.5" />
+              <Chat3D className="w-5 h-5 mb-0.5" />
               <span>{t.nav.chat}</span>
             </button>
 
             <button
               onClick={() => setCurrentRoute('family')}
-              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
                 currentRoute === 'family'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
+                  ? 'text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-50/70 dark:bg-emerald-950/50 shadow-inner'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
             >
-              <Users className="w-5 h-5 mb-0.5" />
+              <Family3D className="w-5 h-5 mb-0.5" />
               <span>{t.nav.family}</span>
             </button>
 
             <button
               onClick={() => setCurrentRoute('expenses')}
-              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
                 currentRoute === 'expenses' || currentRoute === 'money'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
+                  ? 'text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-50/70 dark:bg-emerald-950/50 shadow-inner'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
             >
-              <DollarSign className="w-5 h-5 mb-0.5" />
+              <Expenses3D className="w-5 h-5 mb-0.5" />
               <span>{t.nav.expenses || t.nav.money}</span>
             </button>
 
             <button
               onClick={() => setCurrentRoute('personal')}
-              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+              className={`flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
                 currentRoute === 'personal'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/70 dark:bg-indigo-950/50 shadow-inner'
                   : 'text-slate-700 dark:text-slate-300'
               }`}
             >
-              <Lock className="w-5 h-5 mb-0.5 text-indigo-500" />
+              <PersonalSpace3D className="w-5 h-5 mb-0.5" />
               <span>Private</span>
             </button>
 
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-xl text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 transition-all active:scale-95 cursor-pointer"
+              className="flex-1 min-h-[48px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 transition-all active:scale-95 cursor-pointer"
             >
               <Menu className="w-5 h-5 mb-0.5" />
               <span>More</span>
@@ -512,6 +531,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
 
       {/* Notifications Drawer */}
       <NotificationDrawer />
+
+      {/* User Personal Profile & Avatar Modal */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </div>
   );
 };

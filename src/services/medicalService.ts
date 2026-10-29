@@ -11,12 +11,8 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import {
   MedicalProfile,
   Allergy,
@@ -466,38 +462,12 @@ class MedicalService {
     const { familyId, profileId, file, title, category, currentUser, notes, onProgress } = params;
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/medical/${profileId}/documents/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
-
-    const downloadUrl = await new Promise<string>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        'state_changed',
-        (snap) => {
-          const progress = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          if (onProgress) onProgress(progress);
-        },
-        async (error) => {
-          console.warn('Medical document storage upload error, fallback:', error);
-          if (file.size <= 2 * 1024 * 1024) {
-            try {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = () => reject(error);
-              reader.readAsDataURL(file);
-              return;
-            } catch {}
-          }
-          reject(error);
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          } catch (err) {
-            reject(err);
-          }
-        }
-      );
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      onProgress,
     });
 
     const docCol = collection(db, 'families', familyId, 'medicalProfiles', profileId, 'documents');
@@ -510,15 +480,13 @@ class MedicalService {
       category,
       fileName: file.name,
       fileSize: file.size,
-      url: downloadUrl,
+      url: res.downloadUrl,
       uploadedAt: new Date().toISOString(),
       uploadedBy: currentUser.name,
       notes: notes?.trim() || undefined,
     };
 
-    const clean: any = { ...docData };
-    Object.keys(clean).forEach((k) => clean[k] === undefined && delete clean[k]);
-    await setDoc(newDoc, clean);
+    await setDoc(newDoc, cleanFirestoreData(docData));
 
     return docData;
   }

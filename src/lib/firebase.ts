@@ -66,6 +66,13 @@ export const db: Firestore = initializeFirestore(
 );
 
 export const storage: FirebaseStorage = getStorage(app);
+// Cap storage retries to 6 seconds so failed/unreachable storage calls fail fast instead of hanging for 10 minutes
+try {
+  (storage as any).maxUploadRetryTime = 6000;
+  (storage as any).maxOperationRetryTime = 6000;
+} catch {
+  // safe fallback
+}
 
 // Set local browser persistence
 setPersistence(auth, browserLocalPersistence).catch((err) => {
