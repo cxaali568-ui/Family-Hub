@@ -24,6 +24,9 @@ import {
   Shield,
   Tag,
   AlertTriangle,
+  Paperclip,
+  FileText,
+  Download,
 } from 'lucide-react';
 
 interface EventDetailModalProps {
@@ -192,6 +195,46 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             <p className="text-[11px] text-slate-400 italic">
               Created by {item.createdByName}
             </p>
+          )}
+
+          {/* Attachments & Files */}
+          {item.rawEntity?.attachments && item.rawEntity.attachments.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
+                Attachments ({item.rawEntity.attachments.length})
+              </h4>
+              <div className="space-y-1.5">
+                {item.rawEntity.attachments.map((att: any, idx: number) => (
+                  <div
+                    key={att.id || idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+                        {att.name}
+                      </span>
+                      {att.size && (
+                        <span className="text-[10px] text-slate-400 shrink-0">
+                          ({(att.size / 1024).toFixed(0)} KB)
+                        </span>
+                      )}
+                    </div>
+                    <a
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={att.name}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-medium text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shrink-0"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Linked Record Navigation */}

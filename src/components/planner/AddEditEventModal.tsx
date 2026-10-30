@@ -23,6 +23,7 @@ import {
   Check,
   AlertCircle,
   FileText,
+  X,
 } from 'lucide-react';
 
 interface AddEditEventModalProps {
@@ -78,6 +79,9 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
   const [repeat, setRepeat] = useState<RecurrenceFrequency>('none');
   const [repeatEndDate, setRepeatEndDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [existingAttachments, setExistingAttachments] = useState<Array<{ id: string; name: string; url: string; size?: number }>>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -104,6 +108,9 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
       setRepeat(eventToEdit.recurrence?.frequency || 'none');
       setRepeatEndDate(eventToEdit.recurrence?.endDate || '');
       setNotes(eventToEdit.notes || '');
+      setExistingAttachments(eventToEdit.attachments || []);
+      setSelectedFiles([]);
+      setUploadProgress(null);
     } else {
       setTitle('');
       setDescription('');
@@ -121,6 +128,9 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
       setRepeat('none');
       setRepeatEndDate('');
       setNotes('');
+      setExistingAttachments([]);
+      setSelectedFiles([]);
+      setUploadProgress(null);
     }
     setError('');
   }, [eventToEdit, initialDate, initialCategory, isOpen]);
@@ -129,6 +139,21 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
     setAssignedMemberIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles((prev) => [...prev, ...filesArray]);
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingAttachment = (id: string) => {
+    setExistingAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,6 +185,24 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
             }
           : undefined;
 
+      // Upload any new selected files
+      const newAttachments: Array<{ id: string; name: string; url: string; size?: number }> = [];
+      if (selectedFiles.length > 0) {
+        setUploadProgress(`Uploading 1 of ${selectedFiles.length}...`);
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          setUploadProgress(`Uploading ${file.name} (${i + 1}/${selectedFiles.length})...`);
+          const att = await eventService.uploadAttachment(
+            familyId,
+            eventToEdit?.id || 'temp',
+            file
+          );
+          newAttachments.push(att);
+        }
+      }
+
+      const allAttachments = [...existingAttachments, ...newAttachments];
+
       const payload: any = {
         title: title.trim(),
         description: description.trim() || undefined,
@@ -176,6 +219,7 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
         recurrence: recurrenceRule,
         notes: notes.trim() || undefined,
         status: 'scheduled',
+        attachments: allAttachments.length > 0 ? allAttachments : undefined,
       };
 
       if (eventToEdit) {
@@ -190,6 +234,7 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
       setError(err?.message || 'Failed to save event. Please check inputs.');
     } finally {
       setLoading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -414,6 +459,93 @@ export const AddEditEventModal: React.FC<AddEditEventModalProps> = ({
             placeholder="Details, agendas, what to bring, etc."
             className="w-full text-xs p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
           />
+        </div>
+
+        {/* Attachments Section */}
+        <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
+              Attachments & Documents
+            </span>
+            <label className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+              + Choose Files
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={loading}
+              />
+            </label>
+          </label>
+
+          {/* Existing Attachments */}
+          {existingAttachments.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-slate-400">Attached files:</p>
+              {existingAttachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <a
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-slate-700 dark:text-slate-200 hover:text-indigo-600 underline font-medium"
+                    >
+                      {att.name}
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExistingAttachment(att.id)}
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Selected New Files */}
+          {selectedFiles.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-slate-400">New files to upload:</p>
+              {selectedFiles.map((file, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-xs"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span className="truncate text-slate-700 dark:text-slate-200 font-medium">{file.name}</span>
+                    <span className="text-[10px] text-slate-400 shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedFile(idx)}
+                    disabled={loading}
+                    className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Progress Indicator */}
+          {uploadProgress && (
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs animate-pulse">
+              <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>{uploadProgress}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">

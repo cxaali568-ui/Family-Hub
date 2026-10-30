@@ -199,17 +199,17 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Real-time subscription to notes and urgent items from Firestore
     const unsubNotes = noteService.subscribeNotes(currentFamily.id, (loadedNotes) => {
       setNotes(loadedNotes);
-      const urgent = loadedNotes
-        .filter(n => (n.type === 'urgent' || n.priority === 'urgent' || n.priority === 'critical') && n.status !== 'completed' && !n.isArchived)
+      const urgent: UrgentItem[] = loadedNotes
+        .filter(n => (n.type === 'urgent' || n.priority === 'urgent' || (n as any).priority === 'critical') && n.status !== 'completed' && !n.isArchived)
         .map(n => ({
           id: n.id,
           familyId: n.familyId,
           title: n.title,
           description: n.description || n.content || '',
-          severity: (n.priority === 'critical' ? 'critical' : n.priority === 'urgent' ? 'urgent' : 'alert') as UrgentItem['severity'],
-          createdByUserId: n.createdBy,
+          severity: ((n as any).priority === 'critical' ? 'critical' : n.priority === 'urgent' ? 'urgent' : 'alert') as UrgentItem['severity'],
+          createdByUserId: n.createdBy || '',
           createdByName: n.createdByName || n.authorName || 'Family Member',
-          createdAt: n.createdAt,
+          createdAt: n.createdAt || new Date().toISOString(),
           resolved: n.status === 'completed',
         }));
       setUrgentItems(urgent);
@@ -343,7 +343,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           description,
           categoryId: 'urgent',
           categoryName: 'Urgent Needs',
-          priority: severity === 'critical' ? 'critical' : severity === 'urgent' ? 'urgent' : 'normal',
+          priority: severity === 'critical' || severity === 'urgent' ? 'urgent' : 'high',
           status: 'pending',
           notifyFamily: true,
         },
