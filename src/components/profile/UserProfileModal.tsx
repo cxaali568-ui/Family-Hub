@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFamily } from '../../context/FamilyContext';
 import { Modal } from '../ui/Modal';
@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Avatar } from '../ui/Avatar';
 import { Camera3D, Shield3D } from '../ui/Icons3D';
-import { Camera, Check, Shield, User, Mail, Phone, Sparkles } from 'lucide-react';
+import { Camera, Check, Shield, User, Mail, Phone, Sparkles, Trash2 } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -25,6 +25,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      setName(user.name || user.fullName || '');
+      setPhone(user.phone || '');
+      setAvatarUrl(user.avatar || user.profileImage || '');
+      setError(null);
+      setSuccess(null);
+    }
+  }, [isOpen, user]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +69,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       setUploading(false);
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setError(null);
+    setSuccess(null);
+    setAvatarUrl('');
+    setSaving(true);
+    try {
+      await updateProfile({
+        avatar: '',
+        profileImage: '',
+      });
+      setSuccess('Profile photo removed.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to remove photo.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -210,14 +239,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-          >
-            Upload Photo
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || saving}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>{avatarUrl ? 'Change Photo' : 'Upload Photo'}</span>
+            </button>
+            {avatarUrl && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                disabled={uploading || saving}
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove Photo</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={saving || uploading}>

@@ -9,6 +9,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { PinnedBanner } from './PinnedBanner';
 import { MediaViewerModal } from './MediaViewerModal';
+import { UserProfileModal } from '../profile/UserProfileModal';
 import { Avatar } from '../ui/Avatar';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadingState } from '../ui/LoadingState';
@@ -44,6 +45,7 @@ export const FamilyChatView: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [importantMessageIds, setImportantMessageIds] = useState<string[]>([]);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -308,6 +310,25 @@ export const FamilyChatView: React.FC = () => {
           >
             <Users className="w-5 h-5" />
           </button>
+
+          {/* Logged-in User's Own Profile Avatar & Edit Profile Button */}
+          {user && (
+            <button
+              onClick={() => setProfileModalOpen(true)}
+              className="ml-1 p-0.5 rounded-full hover:ring-2 hover:ring-indigo-500/60 transition-all cursor-pointer group relative shrink-0"
+              title={`My Profile (${user.name || user.fullName || 'User'}) - Click to edit`}
+            >
+              <Avatar
+                src={user.avatar || user.profileImage}
+                name={user.name || user.fullName || 'User'}
+                size="sm"
+                status="online"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[7px] shadow-sm">
+                ✎
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -528,8 +549,8 @@ export const FamilyChatView: React.FC = () => {
                   className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                 >
                   <Avatar
-                    src={m.userPhoto}
-                    name={m.userName || 'Member'}
+                    src={isMe ? (user?.avatar || user?.profileImage || m.userPhoto) : m.userPhoto}
+                    name={isMe ? (user?.name || user?.fullName || m.userName || 'Member') : (m.userName || 'Member')}
                     size="md"
                     status="online"
                   />
@@ -566,6 +587,12 @@ export const FamilyChatView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* User Personal Profile & Avatar Modal */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </div>
   );
 };

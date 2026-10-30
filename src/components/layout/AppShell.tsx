@@ -512,6 +512,43 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               })}
             </nav>
 
+            {/* Logged-in User's Own Profile in Mobile Menu */}
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setProfileModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-colors border border-slate-200/60 dark:border-slate-700 text-left group cursor-pointer"
+                title="Edit My Profile & Photo"
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      src={user?.avatar || user?.profileImage}
+                      name={user?.name || 'User'}
+                      size="sm"
+                      status="online"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px] shadow-sm">
+                      ✎
+                    </span>
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 transition-colors">
+                      {user?.name || 'My Profile'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60">
+                  Edit Profile
+                </span>
+              </button>
+            </div>
+
             <div className="p-3 border-t border-slate-100 dark:border-slate-800">
               <PWAInstallPrompt variant="menu-item" />
             </div>

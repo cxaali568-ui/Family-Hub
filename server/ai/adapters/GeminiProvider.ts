@@ -3,9 +3,9 @@ import { AIProvider, AIRequest, AIResponse, ChatMessage } from '../types';
 
 export class GeminiProvider implements AIProvider {
   readonly id = 'gemini' as const;
-  readonly name = 'Google Gemini (gemini-3.8-flash)';
+  readonly name = 'Google Gemini (gemini-3.5-flash)';
   private client: GoogleGenAI | null = null;
-  private defaultModel = 'gemini-3.8-flash';
+  private defaultModel = 'gemini-3.5-flash';
 
   constructor() {
     this.initClient();
@@ -14,14 +14,7 @@ export class GeminiProvider implements AIProvider {
   private initClient(): void {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey.trim().length > 0 && apiKey !== 'your_key_here') {
-      this.client = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          },
-        },
-      });
+      this.client = new GoogleGenAI({ apiKey });
     } else {
       this.client = null;
     }
@@ -82,34 +75,48 @@ export class GeminiProvider implements AIProvider {
       throw new Error('Gemini API is not configured. Missing GEMINI_API_KEY.');
     }
 
-    const model = request.model || this.defaultModel;
+    const targetModel = request.model || this.defaultModel;
     const contents = this.formatContents(request.messages, request.prompt);
     const systemInstruction = this.buildSystemInstruction(request.systemInstruction, request.contextItems);
 
-    const response = await this.client.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: request.temperature ?? 0.7,
-      },
-    });
+    const modelsToTry = [targetModel, 'gemini-3.5-flash', 'gemini-3.6-flash'].filter(
+      (m, idx, arr) => arr.indexOf(m) === idx
+    );
 
-    const replyText = response.text || '';
-    const usage = response.usageMetadata
-      ? {
-          promptTokens: response.usageMetadata.promptTokenCount,
-          completionTokens: response.usageMetadata.candidatesTokenCount,
-          totalTokens: response.usageMetadata.totalTokenCount,
-        }
-      : undefined;
+    let lastError: any = null;
+    for (const model of modelsToTry) {
+      try {
+        const response = await this.client.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: request.temperature ?? 0.7,
+          },
+        });
 
-    return {
-      text: replyText,
-      provider: 'gemini',
-      model,
-      tokenUsage: usage,
-    };
+        const replyText = response.text || '';
+        const usage = response.usageMetadata
+          ? {
+              promptTokens: response.usageMetadata.promptTokenCount,
+              completionTokens: response.usageMetadata.candidatesTokenCount,
+              totalTokens: response.usageMetadata.totalTokenCount,
+            }
+          : undefined;
+
+        return {
+          text: replyText,
+          provider: 'gemini',
+          model,
+          tokenUsage: usage,
+        };
+      } catch (err: any) {
+        console.warn(`[GeminiProvider] Model ${model} failed:`, err?.message || err);
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Failed to generate response with Gemini');
   }
 
   async streamResponse(request: AIRequest, onChunk: (chunk: string) => void): Promise<AIResponse> {
@@ -117,33 +124,47 @@ export class GeminiProvider implements AIProvider {
       throw new Error('Gemini API is not configured. Missing GEMINI_API_KEY.');
     }
 
-    const model = request.model || this.defaultModel;
+    const targetModel = request.model || this.defaultModel;
     const contents = this.formatContents(request.messages, request.prompt);
     const systemInstruction = this.buildSystemInstruction(request.systemInstruction, request.contextItems);
 
-    const stream = await this.client.models.generateContentStream({
-      model,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: request.temperature ?? 0.7,
-      },
-    });
+    const modelsToTry = [targetModel, 'gemini-3.5-flash', 'gemini-3.6-flash'].filter(
+      (m, idx, arr) => arr.indexOf(m) === idx
+    );
 
-    let fullText = '';
-    for await (const chunk of stream) {
-      const piece = chunk.text || '';
-      if (piece) {
-        fullText += piece;
-        onChunk(piece);
+    let lastError: any = null;
+    for (const model of modelsToTry) {
+      try {
+        const stream = await this.client.models.generateContentStream({
+          model,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: request.temperature ?? 0.7,
+          },
+        });
+
+        let fullText = '';
+        for await (const chunk of stream) {
+          const piece = chunk.text || '';
+          if (piece) {
+            fullText += piece;
+            onChunk(piece);
+          }
+        }
+
+        return {
+          text: fullText,
+          provider: 'gemini',
+          model,
+        };
+      } catch (err: any) {
+        console.warn(`[GeminiProvider] Stream model ${model} failed:`, err?.message || err);
+        lastError = err;
       }
     }
 
-    return {
-      text: fullText,
-      provider: 'gemini',
-      model,
-    };
+    throw lastError || new Error('Failed to stream response with Gemini');
   }
 
   async generateTitle(prompt: string, reply?: string): Promise<string> {
