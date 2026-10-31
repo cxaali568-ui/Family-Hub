@@ -298,3 +298,59 @@ export const Camera3D: React.FC<Icon3DProps> = ({ className = 'w-6 h-6', size })
 );
 
 export const Shield3D = PersonalSpace3D;
+
+export const Birthday3D: React.FC<Icon3DProps> = ({ className = 'w-6 h-6', size }) => (
+  <svg
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`shrink-0 drop-shadow-md ${className}`}
+    style={size ? { width: size, height: size } : undefined}
+  >
+    <defs>
+      <linearGradient id="bday_box" x1="8" y1="18" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#F43F5E" />
+        <stop offset="0.5" stopColor="#E11D48" />
+        <stop offset="1" stopColor="#9F1239" />
+      </linearGradient>
+      <linearGradient id="bday_lid" x1="6" y1="14" x2="42" y2="22" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FB7185" />
+        <stop offset="1" stopColor="#E11D48" />
+      </linearGradient>
+      <linearGradient id="bday_ribbon" x1="20" y1="6" x2="28" y2="44" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FBBF24" />
+        <stop offset="0.6" stopColor="#F59E0B" />
+        <stop offset="1" stopColor="#D97706" />
+      </linearGradient>
+      <filter id="bday_shadow" x="2" y="4" width="44" height="42" filterUnits="userSpaceOnUse">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#881337" floodOpacity="0.35" />
+      </filter>
+    </defs>
+    <g filter="url(#bday_shadow)">
+      {/* Gift Box Base */}
+      <rect x="9" y="20" width="30" height="22" rx="4" fill="url(#bday_box)" />
+      {/* Box Lid */}
+      <rect x="7" y="14" width="34" height="7" rx="3" fill="url(#bday_lid)" />
+      {/* Vertical Ribbon */}
+      <rect x="21" y="14" width="6" height="28" fill="url(#bday_ribbon)" />
+      {/* Horizontal Ribbon */}
+      <rect x="9" y="28" width="30" height="5" fill="url(#bday_ribbon)" />
+      {/* Bow Left */}
+      <path
+        d="M24 14C20 9 14 9 16 13C17.5 16 23 14 24 14Z"
+        fill="#FDE68A"
+        stroke="#D97706"
+        strokeWidth="1"
+      />
+      {/* Bow Right */}
+      <path
+        d="M24 14C28 9 34 9 32 13C30.5 16 25 14 24 14Z"
+        fill="#FDE68A"
+        stroke="#D97706"
+        strokeWidth="1"
+      />
+      {/* Center Knot */}
+      <circle cx="24" cy="14" r="2.5" fill="#F59E0B" />
+    </g>
+  </svg>
+);

@@ -17,6 +17,10 @@ export const Avatar: React.FC<AvatarProps> = ({
 }) => {
   const [imageError, setImageError] = React.useState(false);
 
+  React.useEffect(() => {
+    setImageError(false);
+  }, [src]);
+
   const sizeClasses = {
     xs: 'w-6 h-6 text-[10px]',
     sm: 'w-8 h-8 text-xs',
@@ -39,12 +43,14 @@ export const Avatar: React.FC<AvatarProps> = ({
     offline: 'bg-slate-300 dark:bg-slate-600 ring-white dark:ring-slate-900',
   };
 
-  const initials = name
-    .split(' ')
+  const safeName = (name || 'User').trim();
+  const initials = safeName
+    .split(/\s+/)
+    .filter(Boolean)
     .map(p => p[0])
     .join('')
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || 'U';
 
   // Pick deterministic friendly background color based on name
   const bgColors = [
@@ -55,14 +61,18 @@ export const Avatar: React.FC<AvatarProps> = ({
     'bg-violet-500 text-white',
     'bg-amber-500 text-white',
   ];
-  const colorIndex = (name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % bgColors.length;
+  const charCode1 = safeName.charCodeAt(0) || 65;
+  const charCode2 = safeName.charCodeAt(1) || 0;
+  const colorIndex = (charCode1 + charCode2) % bgColors.length;
 
   return (
     <div className={`relative inline-block shrink-0 select-none ${className}`}>
       {src && !imageError ? (
         <img
           src={src}
-          alt={name}
+          alt={safeName}
+          loading="lazy"
+          decoding="async"
           onError={() => setImageError(true)}
           className={`${sizeClasses[size]} rounded-full object-cover ring-1 ring-black/5 shadow-xs`}
         />

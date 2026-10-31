@@ -230,8 +230,13 @@ class AuthService {
 
     if (auth.currentUser && auth.currentUser.uid === userId) {
       const fbUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.name || updates.fullName) fbUpdates.displayName = updates.name || updates.fullName;
-      if (updates.avatar || updates.profileImage) fbUpdates.photoURL = updates.avatar || updates.profileImage;
+      if (typeof updates.name === 'string' || typeof updates.fullName === 'string') {
+        fbUpdates.displayName = (updates.name || updates.fullName) || 'User';
+      }
+      if ('avatar' in updates || 'profileImage' in updates) {
+        // If empty string, clear photoURL in Firebase Auth
+        fbUpdates.photoURL = (updates.avatar !== undefined ? updates.avatar : updates.profileImage) || '';
+      }
       if (Object.keys(fbUpdates).length > 0) {
         try {
           await updateProfile(auth.currentUser, fbUpdates);

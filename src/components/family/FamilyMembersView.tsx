@@ -44,8 +44,13 @@ import {
   ChevronRight,
   User,
   SlidersHorizontal,
+  Gift,
+  Cake,
+  Sparkles,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { UserProfileModal } from '../profile/UserProfileModal';
+import { Birthday3D, Family3D } from '../ui/Icons3D';
 
 export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' | 'invitations' }> = ({
   initialTab = 'members',
@@ -61,6 +66,9 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
   } = useFamily();
   const { user: currentUser } = useAuth();
   const { showError, showSuccess } = useToast();
+
+  // User Profile Modal for editing logged-in user's own profile photo & details
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
 
   // Primary top tab: 'members' | 'children' | 'invitations'
   const [activeTab, setActiveTab] = useState<'members' | 'children' | 'invitations'>(initialTab);
@@ -225,6 +233,76 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
     return list;
   }, [children, childSearch, selectedSchoolFilter, selectedClassFilter]);
 
+  // Upcoming Birthdays Calculation (Family Members & Children)
+  const upcomingBirthdays = useMemo(() => {
+    const list: Array<{
+      id: string;
+      name: string;
+      photo?: string;
+      relationship: string;
+      isChild: boolean;
+      daysRemaining: number;
+      turningAge: number;
+      dateFormatted: string;
+      rawDate: string;
+    }> = [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const processPerson = (
+      id: string,
+      name: string,
+      dob: string | undefined,
+      photo: string | undefined,
+      relationship: string,
+      isChild: boolean
+    ) => {
+      if (!dob) return;
+      const parts = dob.split('-');
+      if (parts.length < 3) return;
+      const birthYear = parseInt(parts[0], 10);
+      const birthMonth = parseInt(parts[1], 10) - 1;
+      const birthDay = parseInt(parts[2], 10);
+
+      let nextBday = new Date(now.getFullYear(), birthMonth, birthDay);
+      if (nextBday < today) {
+        nextBday = new Date(now.getFullYear() + 1, birthMonth, birthDay);
+      }
+
+      const diffTime = nextBday.getTime() - today.getTime();
+      const daysRemaining = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      const turningAge = nextBday.getFullYear() - birthYear;
+
+      const dateFormatted = nextBday.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+      });
+
+      list.push({
+        id,
+        name,
+        photo,
+        relationship,
+        isChild,
+        daysRemaining,
+        turningAge,
+        dateFormatted,
+        rawDate: dob,
+      });
+    };
+
+    memberProfiles.forEach((m) =>
+      processPerson(m.id, m.fullName, m.dateOfBirth, m.profileImage, m.relationship, !!m.isChild)
+    );
+    children.forEach((c) =>
+      processPerson(c.id, c.fullName, c.dateOfBirth, c.photo, 'Child', true)
+    );
+
+    list.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    return list;
+  }, [memberProfiles, children]);
+
   if (!currentFamily) {
     return (
       <div className="p-8 text-center text-slate-500">
@@ -267,7 +345,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 pb-28 lg:pb-12 max-w-6xl mx-auto space-y-6">
       {/* Top Family Header */}
       <div className="p-5 md:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -326,6 +404,117 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
           )}
         </div>
       </div>
+
+      {/* ---------------- My Own Personal Profile Card ---------------- */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-200/70 dark:border-indigo-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative group shrink-0">
+            <Avatar
+              src={currentUser?.avatar || currentUser?.profileImage}
+              name={currentUser?.name || 'User'}
+              size="lg"
+              status="online"
+              className="ring-4 ring-indigo-500/20 shadow-md"
+            />
+            <button
+              onClick={() => setIsUserProfileModalOpen(true)}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center text-xs shadow-md transition-transform active:scale-95 cursor-pointer ring-2 ring-white dark:ring-slate-900"
+              title="Change Profile Photo"
+            >
+              ✎
+            </button>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                {currentUser?.name || 'Your Account Profile'}
+              </h2>
+              <Badge variant="primary">My Profile</Badge>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs sm:max-w-md">
+              {currentUser?.email} {currentUser?.phone ? `• ${currentUser?.phone}` : ''}
+            </p>
+            <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mt-1">
+              Your profile photo and name appear in the Family Space header and family conversations.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsUserProfileModalOpen(true)}
+          icon={<User className="w-4 h-4 text-indigo-600" />}
+          className="shrink-0 font-bold border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 self-start sm:self-center"
+        >
+          Edit My Profile
+        </Button>
+      </div>
+
+      {/* ---------------- Upcoming Family Birthdays Section ---------------- */}
+      {upcomingBirthdays.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-rose-50/70 via-pink-50/50 to-amber-50/60 dark:from-slate-900 dark:via-rose-950/20 dark:to-slate-900 border border-rose-200/70 dark:border-rose-900/50 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Birthday3D className="w-7 h-7" />
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>Upcoming Birthdays & Milestones</span>
+                  <Sparkles className="w-4 h-4 text-amber-500 animate-spin" />
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Celebrate household moments, track ages, and never miss a family birthday.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {upcomingBirthdays.slice(0, 3).map((b) => (
+              <div
+                key={b.id}
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-rose-200/60 dark:border-rose-900/60 shadow-xs flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <Avatar
+                    src={b.photo}
+                    name={b.name}
+                    size="md"
+                    className="ring-2 ring-rose-400/30 shrink-0"
+                  />
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
+                      {b.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <span>{b.relationship}</span>
+                      <span>•</span>
+                      <span className="font-semibold text-rose-600 dark:text-rose-400">
+                        Turning {b.turningAge}
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-slate-400">{b.dateFormatted}</p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <span
+                    className={`text-[10px] font-extrabold px-2 py-1 rounded-lg ${
+                      b.daysRemaining === 0
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : b.daysRemaining <= 7
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {b.daysRemaining === 0 ? 'Today! 🎂' : `In ${b.daysRemaining}d`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Primary Section Switcher Tabs */}
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1 text-sm font-bold">
@@ -972,6 +1161,12 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
           </div>
         </div>
       </Modal>
+
+      {/* User Personal Profile & Avatar Edit Modal */}
+      <UserProfileModal
+        isOpen={isUserProfileModalOpen}
+        onClose={() => setIsUserProfileModalOpen(false)}
+      />
     </div>
   );
 };

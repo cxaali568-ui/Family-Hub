@@ -357,7 +357,7 @@ export const FamilyAIView: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-[760px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full min-h-[480px] max-h-[85vh] md:max-h-none md:h-[760px] bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
       {/* ---------------- Sidebar: Conversations ---------------- */}
       <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col shrink-0">
         <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2">

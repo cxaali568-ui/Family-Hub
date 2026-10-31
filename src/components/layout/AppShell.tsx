@@ -312,17 +312,32 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-2">
-                <Avatar src={currentFamily?.photo || currentFamily?.avatar} name={currentFamily?.name || 'Family'} size="sm" />
+              <button
+                onClick={() => setProfileModalOpen(true)}
+                className="flex items-center gap-2 cursor-pointer group text-left hover:opacity-90 transition-opacity"
+                title="Edit My Profile & Photo"
+              >
+                <div className="relative shrink-0">
+                  <Avatar
+                    src={user?.avatar || user?.profileImage}
+                    name={user?.name || 'User'}
+                    size="sm"
+                    className="ring-2 ring-indigo-500/20"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[7px] font-bold shadow-xs">
+                    ✎
+                  </span>
+                </div>
                 <div>
-                  <h1 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate max-w-[130px]">
+                  <h1 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate max-w-[130px] group-hover:text-indigo-600 transition-colors">
                     {currentFamily?.name || 'FamilyHub'}
                   </h1>
-                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                    Family Space
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                    <span>Family Space</span>
+                    <span className="text-[9px] text-slate-400 font-normal">• Edit</span>
                   </p>
                 </div>
-              </div>
+              </button>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -339,18 +354,24 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               </button>
               <button
                 onClick={() => setProfileModalOpen(true)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:ring-2 hover:ring-indigo-500/50 transition-all cursor-pointer"
-                title="Edit Profile"
+                className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:ring-2 hover:ring-indigo-500/50 transition-all cursor-pointer"
+                title="Edit Profile & Photo"
                 aria-label="Your Profile"
               >
                 <Avatar src={user?.avatar || user?.profileImage} name={user?.name || 'User'} size="sm" />
+                <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px] font-bold ring-1 ring-white dark:ring-slate-900">
+                  ✎
+                </span>
               </button>
             </div>
           </header>
 
           {/* ---------------- Main Content View ---------------- */}
-          <main className="flex-1 overflow-hidden relative">
-            {children}
+          {/* Enables native fluid scrolling on mobile with touch momentum and bottom padding */}
+          <main className={`flex-1 relative min-h-0 ${currentRoute === 'chat' ? 'overflow-hidden' : 'overflow-y-auto touch-scroll overscroll-contain'}`}>
+            <div className={`w-full min-h-full ${currentRoute === 'chat' ? 'h-full' : 'pb-24 lg:pb-10'}`}>
+              {children}
+            </div>
           </main>
 
           {/* ---------------- Mobile Bottom Navigation ---------------- */}
@@ -433,9 +454,47 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-slate-400"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Logged-in User's Own Profile Card at Top of Menu */}
+            <div className="p-3 bg-gradient-to-r from-indigo-50/90 to-purple-50/50 dark:from-slate-800/80 dark:to-indigo-950/40 border-b border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setProfileModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/60 dark:border-indigo-900/60 shadow-xs hover:border-indigo-500 transition-all text-left cursor-pointer group"
+                title="Edit My Profile & Photo"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      src={user?.avatar || user?.profileImage}
+                      name={user?.name || 'User'}
+                      size="md"
+                      status="online"
+                      className="ring-2 ring-indigo-500/20"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[9px] shadow-sm font-bold">
+                      ✎
+                    </span>
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 transition-colors">
+                      {user?.name || 'My Profile'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {user?.email}
+                    </p>
+                    <span className="inline-block mt-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                      Edit Profile & Photo →
+                    </span>
+                  </div>
+                </div>
               </button>
             </div>
 

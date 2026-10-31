@@ -271,7 +271,7 @@ export const FamilyPlannerView: React.FC = () => {
   });
 
   return (
-    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 pb-28 lg:pb-12 max-w-7xl mx-auto space-y-6">
       {/* ----------------- Top Header & Actions ----------------- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

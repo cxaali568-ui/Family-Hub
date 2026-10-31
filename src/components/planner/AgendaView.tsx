@@ -108,34 +108,52 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
             {/* List of items */}
             <div className="space-y-2">
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onItemClick(item)}
-                  className="w-full text-left p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/60 shadow-xs hover:shadow-md transition-all flex items-start sm:items-center justify-between gap-3 group"
-                >
-                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                    {/* Time or All-day pill */}
-                    <div className="w-16 sm:w-20 text-center shrink-0">
-                      {item.allDay ? (
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md block">
-                          All Day
-                        </span>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-1 rounded-md">
-                          <Clock className="w-3 h-3 shrink-0" />
-                          <span>{item.startTime}</span>
-                        </div>
-                      )}
-                    </div>
+              {group.items.map((item) => {
+                const isBirthday = item.source === 'birthday';
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onItemClick(item)}
+                    className={`w-full text-left p-3.5 sm:p-4 rounded-2xl ${
+                      isBirthday
+                        ? 'bg-gradient-to-r from-rose-50/70 via-white to-pink-50/40 dark:from-rose-950/20 dark:via-slate-900 dark:to-slate-900 border-rose-300/80 dark:border-rose-900/60'
+                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
+                    } hover:border-indigo-500/60 shadow-xs hover:shadow-md transition-all flex items-start sm:items-center justify-between gap-3 group`}
+                  >
+                    <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                      {/* Time or All-day pill */}
+                      <div className="w-16 sm:w-20 text-center shrink-0">
+                        {item.allDay ? (
+                          <span
+                            className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-md block ${
+                              isBirthday
+                                ? 'text-rose-700 bg-rose-100 dark:bg-rose-950/80 dark:text-rose-300'
+                                : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
+                            }`}
+                          >
+                            {isBirthday ? '🎂 Birthday' : 'All Day'}
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-1 rounded-md">
+                            <Clock className="w-3 h-3 shrink-0" />
+                            <span>{item.startTime}</span>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${item.color}`}>
-                          {item.category || item.source}
-                        </span>
+                      {/* Content */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <span
+                            className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                              isBirthday
+                                ? 'bg-rose-500 text-white font-extrabold'
+                                : item.color
+                            }`}
+                          >
+                            {isBirthday ? '🎉 Milestone Celebration' : item.category || item.source}
+                          </span>
                         {item.source !== 'event' && (
                           <Badge variant="outline" className="text-[9px] uppercase">
                             {item.source}
@@ -178,7 +196,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     </span>
                   </div>
                 </button>
-              ))}
+              );
+            })}
             </div>
           </div>
         );

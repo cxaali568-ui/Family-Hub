@@ -115,7 +115,7 @@ export const PersonalSpaceView: React.FC = () => {
       </div>
 
       {/* ----------------- Content Area ----------------- */}
-      <div className="flex-1 p-3 sm:p-6 max-w-6xl mx-auto w-full">
+      <div className="flex-1 p-3 sm:p-6 pb-28 lg:pb-12 max-w-6xl mx-auto w-full touch-scroll">
         {currentPersonalRoute === 'dashboard' && <PersonalDashboard />}
         {currentPersonalRoute === 'expenses' && <PersonalExpenses />}
         {currentPersonalRoute === 'school_work' && <PersonalTasks />}
