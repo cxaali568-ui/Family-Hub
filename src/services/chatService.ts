@@ -329,6 +329,84 @@ class ChatService {
   }
 
   /**
+   * Uploads recorded audio blob (Voice Message) with progress and safe resilient fallback
+   */
+  async uploadVoiceMessage(params: {
+    familyId: string;
+    chatRoomId: string;
+    blob: Blob;
+    durationSeconds: number;
+    onProgress?: (percent: number) => void;
+  }): Promise<Attachment> {
+    const { familyId, chatRoomId, blob, durationSeconds, onProgress } = params;
+    const ext = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'webm';
+    const fileName = `Voice Note (${Math.round(durationSeconds)}s).${ext}`;
+    const storagePath = `families/${familyId}/chat/${chatRoomId}/voice_${Date.now()}.${ext}`;
+    const storageRef = ref(storage, storagePath);
+
+    return new Promise((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, blob, {
+        contentType: blob.type || 'audio/webm',
+      });
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          if (snapshot.totalBytes > 0) {
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            if (onProgress) onProgress(progress);
+          }
+        },
+        async (error) => {
+          console.warn("Storage upload error for voice message, using resilient data URL fallback:", error);
+          try {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              resolve({
+                id: `att-voice-${Date.now()}`,
+                fileName,
+                fileType: 'audio',
+                fileSize: blob.size,
+                url: dataUrl,
+              });
+            };
+            reader.onerror = () => reject(error);
+            reader.readAsDataURL(blob);
+          } catch {
+            reject(error);
+          }
+        },
+        async () => {
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve({
+              id: `att-voice-${Date.now()}`,
+              fileName,
+              fileType: 'audio',
+              fileSize: blob.size,
+              url: downloadUrl,
+            });
+          } catch (err) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({
+                id: `att-voice-${Date.now()}`,
+                fileName,
+                fileType: 'audio',
+                fileSize: blob.size,
+                url: reader.result as string,
+              });
+            };
+            reader.onerror = () => reject(err);
+            reader.readAsDataURL(blob);
+          }
+        }
+      );
+    });
+  }
+
+  /**
    * Updates real-time typing state with automatic debounce
    */
   async setTyping(chatRoomId: string, user: User, isTyping: boolean): Promise<void> {

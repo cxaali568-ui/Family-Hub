@@ -142,8 +142,14 @@ class AIService {
     });
 
     if (!res.ok || !res.body) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || `Streaming failed with status ${res.status}`);
+      console.warn('Streaming endpoint error, falling back to standard /api/ai/chat');
+      const fallbackResult = await this.sendMessage(history, newPrompt, options);
+      onChunk(fallbackResult.reply);
+      return {
+        provider: fallbackResult.provider,
+        model: fallbackResult.model,
+        fallbackUsed: fallbackResult.fallbackUsed,
+      };
     }
 
     const reader = res.body.getReader();

@@ -11,7 +11,8 @@ import {
   onSnapshot,
   limit,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
+import { uploadFileResilient } from '../lib/storageHelper';
 import {
   Family,
   FamilyMember,
@@ -515,6 +516,53 @@ class FamilyService {
         console.warn("Error listening to activity logs:", err);
       }
     );
+  }
+
+  /**
+   * Updates family identity (name, photo/logo, settings)
+   */
+  async updateFamilyIdentity(
+    familyId: string,
+    updates: { name?: string; photo?: string; settings?: any },
+    actor?: User
+  ): Promise<void> {
+    const familyRef = doc(db, 'families', familyId);
+    const cleanUpdates = cleanFirestoreData({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+    await updateDoc(familyRef, cleanUpdates);
+
+    if (actor) {
+      await this.logActivity({
+        familyId,
+        actorUserId: actor.id,
+        actorName: actor.name,
+        action: `updated the family app identity${updates.name ? ` to "${updates.name}"` : ''}`,
+        entityType: 'family',
+        entityId: familyId,
+      });
+    }
+  }
+
+  /**
+   * Uploads new family app image/logo
+   */
+  async uploadFamilyLogo(
+    familyId: string,
+    file: File,
+    onProgress?: (pct: number) => void
+  ): Promise<string> {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `families/${familyId}/logo/${Date.now()}_${safeName}`;
+    const res = await uploadFileResilient({
+      storagePath,
+      file,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
+      onProgress,
+    });
+    return res.downloadUrl;
   }
 }
 

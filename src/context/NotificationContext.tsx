@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppNotification } from '../types';
 import { notificationService } from '../services/notificationService';
 import { useAuth } from './AuthContext';
@@ -10,6 +10,7 @@ interface NotificationContextType {
   setIsOpen: (open: boolean) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  requestWebNotificationPermission?: () => Promise<boolean>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -21,6 +22,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const prevUnreadRef = useRef<number>(0);
+
+  const requestWebNotificationPermission = async (): Promise<boolean> => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        return perm === 'granted';
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (!userId) {
@@ -31,7 +45,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const unsub = notificationService.subscribeUserNotifications(userId, (notifs) => {
       setNotifications(notifs);
-      setUnreadCount(notifs.filter(n => !n.readAt).length);
+      const unread = notifs.filter(n => !n.readAt);
+      setUnreadCount(unread.length);
+
+      // Trigger browser notification if permission granted and unread count increased
+      if (unread.length > prevUnreadRef.current && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        const latest = unread[0];
+        if (latest) {
+          try {
+            new Notification(latest.title || 'FamilyHub', {
+              body: latest.message,
+              icon: '/icons/icon-192.png',
+            });
+          } catch {}
+        }
+      }
+      prevUnreadRef.current = unread.length;
     });
 
     return () => unsub();
@@ -55,6 +84,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setIsOpen,
         markAsRead,
         markAllAsRead,
+        requestWebNotificationPermission,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Message, Attachment } from '../../types';
 import { Avatar } from '../ui/Avatar';
 import { useToast } from '../../context/ToastContext';
@@ -16,7 +16,119 @@ import {
   X,
   AlertCircle,
   Eye,
+  Play,
+  Pause,
 } from 'lucide-react';
+
+const VoiceMessagePlayer: React.FC<{ url: string; fileName: string; isCurrentUser: boolean }> = ({
+  url,
+  fileName,
+  isCurrentUser,
+}) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    const cur = audioRef.current.currentTime;
+    const dur = audioRef.current.duration || 1;
+    setCurrentTime(cur);
+    setProgress((cur / dur) * 100);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration || 0);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setProgress(0);
+    setCurrentTime(0);
+  };
+
+  const formatAudioTime = (sec: number) => {
+    if (!sec || isNaN(sec)) return '0:00';
+    const mins = Math.floor(sec / 60);
+    const remainder = Math.floor(sec % 60);
+    return `${mins}:${remainder.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div
+      className={`flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all ${
+        isCurrentUser
+          ? 'bg-indigo-700/60 border-indigo-400/40 text-white'
+          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-xs'
+      }`}
+    >
+      <audio
+        ref={audioRef}
+        src={url}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        preload="metadata"
+      />
+      <button
+        type="button"
+        onClick={togglePlay}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-xs transition-transform active:scale-90 ${
+          isCurrentUser
+            ? 'bg-white text-indigo-700 hover:bg-indigo-50'
+            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+        }`}
+        aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
+      >
+        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+      </button>
+
+      <div className="flex-1 min-w-[130px] space-y-1">
+        {/* Waveform bars */}
+        <div className="flex items-center gap-1 h-3.5">
+          {[40, 70, 30, 90, 60, 100, 45, 80, 50, 85, 30, 75, 55, 95].map((h, i) => {
+            const barProgress = (i / 14) * 100;
+            const isPlayed = progress >= barProgress;
+            return (
+              <div
+                key={i}
+                className={`w-1 rounded-full transition-all duration-150 ${
+                  isPlayed
+                    ? isCurrentUser
+                      ? 'bg-white'
+                      : 'bg-indigo-600'
+                    : isCurrentUser
+                    ? 'bg-indigo-400/50'
+                    : 'bg-slate-300 dark:bg-slate-600'
+                }`}
+                style={{ height: `${h}%` }}
+              />
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] font-mono opacity-80">
+          <span>{formatAudioTime(currentTime)}</span>
+          <span>{duration > 0 ? formatAudioTime(duration) : fileName.replace('.webm', '')}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface MessageBubbleProps {
   message: Message;
@@ -173,7 +285,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div className="mb-2 space-y-2">
                 {message.attachments.map((att) => (
                   <div key={att.id} className="overflow-hidden rounded-xl">
-                    {att.fileType === 'image' ? (
+                    {att.fileType === 'audio' ? (
+                      <VoiceMessagePlayer
+                        url={att.url}
+                        fileName={att.fileName}
+                        isCurrentUser={isCurrentUser}
+                      />
+                    ) : att.fileType === 'image' ? (
                       <div
                         onClick={() => onPreviewAttachment(att)}
                         className="relative group/att cursor-pointer overflow-hidden rounded-xl bg-black/5"

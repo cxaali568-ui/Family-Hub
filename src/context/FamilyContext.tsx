@@ -60,6 +60,8 @@ interface FamilyContextType {
   resolveUrgentItem: (id: string) => Promise<void> | void;
   addPlan: (plan: Omit<FamilyPlan, 'id' | 'familyId'>) => void;
   addNote: (title: string, content: string, category?: FamilyNote['category']) => Promise<void> | void;
+  updateFamilyIdentity: (updates: { name?: string; photo?: string }) => Promise<void>;
+  uploadFamilyLogo: (file: File, onProgress?: (pct: number) => void) => Promise<string>;
   refreshFamilyData: () => Promise<void>;
 }
 
@@ -410,6 +412,22 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const updateFamilyIdentity = async (updates: { name?: string; photo?: string }): Promise<void> => {
+    if (!currentFamily?.id) return;
+    await familyService.updateFamilyIdentity(currentFamily.id, updates, user || undefined);
+    setCurrentFamily(prev => prev ? { ...prev, ...updates } : null);
+    setUserFamilies(prev =>
+      prev.map(f => (f.family.id === currentFamily.id ? { ...f, family: { ...f.family, ...updates } } : f))
+    );
+  };
+
+  const uploadFamilyLogo = async (file: File, onProgress?: (pct: number) => void): Promise<string> => {
+    if (!currentFamily?.id) throw new Error('No family selected');
+    const url = await familyService.uploadFamilyLogo(currentFamily.id, file, onProgress);
+    await updateFamilyIdentity({ photo: url });
+    return url;
+  };
+
   return (
     <FamilyContext.Provider
       value={{
@@ -445,6 +463,8 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         resolveUrgentItem,
         addPlan,
         addNote,
+        updateFamilyIdentity,
+        uploadFamilyLogo,
         refreshFamilyData,
       }}
     >
