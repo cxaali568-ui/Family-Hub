@@ -173,9 +173,11 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Real-time subscription to active family members & activities
   useEffect(() => {
-    if (!currentFamily?.id) {
+    if (!currentFamily?.id || !user?.id) {
       setMembers([]);
       setActivityLogs([]);
+      setNotes([]);
+      setUrgentItems([]);
       return;
     }
 

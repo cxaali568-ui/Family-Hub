@@ -165,31 +165,74 @@ class FamilyService {
    * Loads all families that a user belongs to with active membership
    */
   async getUserFamilies(userId: string): Promise<Array<{ family: Family; membership: FamilyMember }>> {
+    const results: Array<{ family: Family; membership: FamilyMember }> = [];
+    const seenFamilyIds = new Set<string>();
+
     try {
+      // 1. Query familyMembers for this user
       const q = query(
         collection(db, 'familyMembers'),
-        where('userId', '==', userId),
-        where('status', '==', 'active')
+        where('userId', '==', userId)
       );
 
       const snap = await getDocs(q);
-      const results: Array<{ family: Family; membership: FamilyMember }> = [];
-
       for (const mDoc of snap.docs) {
-        const mem = mDoc.data() as FamilyMember;
-        const familySnap = await getDoc(doc(db, 'families', mem.familyId));
-        if (familySnap.exists()) {
-          const fam = familySnap.data() as Family;
-          if (fam.status === 'active') {
-            results.push({ family: fam, membership: mem });
+        try {
+          const mem = mDoc.data() as FamilyMember;
+          if (mem.status === 'removed') continue;
+          if (!mem.familyId || seenFamilyIds.has(mem.familyId)) continue;
+
+          const familySnap = await getDoc(doc(db, 'families', mem.familyId));
+          if (familySnap.exists()) {
+            const fam = familySnap.data() as Family;
+            if (fam.status === 'active') {
+              seenFamilyIds.add(mem.familyId);
+              results.push({ family: fam, membership: mem });
+            }
+          }
+        } catch (innerErr) {
+          console.warn("Could not load individual family doc:", innerErr);
+        }
+      }
+
+      // 2. Also check if the user is the creator of any family (owner safety net)
+      try {
+        const qCreated = query(
+          collection(db, 'families'),
+          where('createdBy', '==', userId)
+        );
+        const createdSnap = await getDocs(qCreated);
+        for (const fDoc of createdSnap.docs) {
+          const fam = fDoc.data() as Family;
+          if (fam.status === 'active' && !seenFamilyIds.has(fam.id)) {
+            seenFamilyIds.add(fam.id);
+            const fallbackMem: FamilyMember = {
+              id: `${fam.id}_${userId}`,
+              familyId: fam.id,
+              userId,
+              role: 'owner',
+              status: 'active',
+              joinedAt: fam.createdAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            results.push({ family: fam, membership: fallbackMem });
+
+            // Self-heal the familyMembers doc if missing
+            try {
+              await setDoc(doc(db, 'familyMembers', `${fam.id}_${userId}`), fallbackMem, { merge: true });
+            } catch (healErr) {
+              console.warn("Self-heal familyMembers doc notice:", healErr);
+            }
           }
         }
+      } catch (createdErr) {
+        console.warn("Could not query created families:", createdErr);
       }
 
       return results;
     } catch (err) {
       console.warn("Could not load user families:", err);
-      return [];
+      return results;
     }
   }
 

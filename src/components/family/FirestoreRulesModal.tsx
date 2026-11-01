@@ -23,7 +23,8 @@ service cloud.firestore {
     function isFamilyMember(familyId) {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
@@ -33,7 +34,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role in ['owner', 'admin'] &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
@@ -43,7 +45,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role == 'owner' &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );

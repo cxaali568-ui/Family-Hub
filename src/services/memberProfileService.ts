@@ -134,6 +134,28 @@ class MemberProfileService {
 
     await setDoc(newDoc, cleanFirestoreData(profile));
 
+    // If linked to a registered user account, ensure they have an active family membership document
+    if (data.userId) {
+      try {
+        const membershipId = `${familyId}_${data.userId}`;
+        const membershipData: FamilyMember = {
+          id: membershipId,
+          familyId,
+          userId: data.userId,
+          role: 'member',
+          status: 'active',
+          joinedAt: now,
+          updatedAt: now,
+          userName: profile.fullName,
+          userEmail: profile.email,
+          userPhoto: profile.profileImage,
+        };
+        await setDoc(doc(db, 'familyMembers', membershipId), cleanFirestoreData(membershipData), { merge: true });
+      } catch (memErr) {
+        console.warn("Could not auto-create familyMembers document:", memErr);
+      }
+    }
+
     // Audit log
     await familyService.logActivity({
       familyId,

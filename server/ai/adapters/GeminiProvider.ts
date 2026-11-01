@@ -3,9 +3,9 @@ import { AIProvider, AIRequest, AIResponse, ChatMessage } from '../types';
 
 export class GeminiProvider implements AIProvider {
   readonly id = 'gemini' as const;
-  readonly name = 'Google Gemini (gemini-3.5-flash)';
+  readonly name = 'Google Gemini';
   private client: GoogleGenAI | null = null;
-  private defaultModel = 'gemini-3.5-flash';
+  private defaultModel = 'gemini-3.1-flash-lite';
 
   constructor() {
     this.initClient();
@@ -14,7 +14,14 @@ export class GeminiProvider implements AIProvider {
   private initClient(): void {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey.trim().length > 0 && apiKey !== 'your_key_here') {
-      this.client = new GoogleGenAI({ apiKey });
+      this.client = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
     } else {
       this.client = null;
     }
@@ -79,7 +86,7 @@ export class GeminiProvider implements AIProvider {
     const contents = this.formatContents(request.messages, request.prompt);
     const systemInstruction = this.buildSystemInstruction(request.systemInstruction, request.contextItems);
 
-    const modelsToTry = [targetModel, 'gemini-3.5-flash', 'gemini-3.6-flash'].filter(
+    const modelsToTry = [targetModel, 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'].filter(
       (m, idx, arr) => arr.indexOf(m) === idx
     );
 
@@ -91,7 +98,6 @@ export class GeminiProvider implements AIProvider {
           contents,
           config: {
             systemInstruction,
-            temperature: request.temperature ?? 0.7,
           },
         });
 
@@ -128,7 +134,7 @@ export class GeminiProvider implements AIProvider {
     const contents = this.formatContents(request.messages, request.prompt);
     const systemInstruction = this.buildSystemInstruction(request.systemInstruction, request.contextItems);
 
-    const modelsToTry = [targetModel, 'gemini-3.5-flash', 'gemini-3.6-flash'].filter(
+    const modelsToTry = [targetModel, 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'].filter(
       (m, idx, arr) => arr.indexOf(m) === idx
     );
 
@@ -140,7 +146,6 @@ export class GeminiProvider implements AIProvider {
           contents,
           config: {
             systemInstruction,
-            temperature: request.temperature ?? 0.7,
           },
         });
 
@@ -163,6 +168,9 @@ export class GeminiProvider implements AIProvider {
         lastError = err;
       }
     }
+
+    throw lastError || new Error('Failed to stream response with Gemini');
+  }
 
     throw lastError || new Error('Failed to stream response with Gemini');
   }

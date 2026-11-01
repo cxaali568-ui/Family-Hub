@@ -13,7 +13,8 @@ service cloud.firestore {
     function isFamilyMember(familyId) {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
@@ -23,7 +24,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role in ['owner', 'admin'] &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
@@ -33,7 +35,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)) &&
          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.role == 'owner' &&
-         get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status == 'active') ||
+         (!('status' in get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data) ||
+          get(/databases/$(database)/documents/familyMembers/$(familyId + '_' + request.auth.uid)).data.status in ['active', 'approved'])) ||
         (exists(/databases/$(database)/documents/families/$(familyId)) &&
          get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid)
       );
@@ -433,7 +436,8 @@ service cloud.firestore {
 
     // --- Chat Rooms ---
     match /chatRooms/{chatRoomId} {
-      allow get, list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
+      allow get: if isAuthenticated() && (resource == null || isFamilyMember(resource.data.familyId));
+      allow list: if isAuthenticated() && isFamilyMember(resource.data.familyId);
       allow create: if isAuthenticated() && (
         request.resource.data.createdBy == request.auth.uid ||
         isFamilyMember(request.resource.data.familyId)
@@ -489,6 +493,7 @@ service cloud.firestore {
     // --- Chat Read States ---
     match /chatReadStates/{readStateId} {
       allow get: if isAuthenticated() && (
+        resource == null ||
         resource.data.userId == request.auth.uid ||
         isFamilyMember(resource.data.familyId)
       );
@@ -499,7 +504,8 @@ service cloud.firestore {
 
     // --- Notifications ---
     match /notifications/{notificationId} {
-      allow get, list: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
+      allow get: if isAuthenticated() && (resource == null || resource.data.recipientUserId == request.auth.uid);
+      allow list: if isAuthenticated() && resource.data.recipientUserId == request.auth.uid;
       allow create: if isAuthenticated() &&
         request.resource.data.recipientUserId != null &&
         (request.resource.data.familyId == null || isFamilyMember(request.resource.data.familyId));
@@ -512,12 +518,24 @@ service cloud.firestore {
 
     // --- Activity Logs ---
     match /activityLogs/{activityId} {
-      allow get, list: if isAuthenticated() && (
+      allow get: if isAuthenticated() && (
+        resource == null ||
+        resource.data.actorUserId == request.auth.uid ||
+        isFamilyMember(resource.data.familyId)
+      );
+      allow list: if isAuthenticated() && (
         resource.data.actorUserId == request.auth.uid ||
         isFamilyMember(resource.data.familyId)
       );
       allow create: if isAuthenticated() &&
         request.resource.data.actorUserId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // --- Support Tickets Collection ---
+    match /supportTickets/{ticketId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
 

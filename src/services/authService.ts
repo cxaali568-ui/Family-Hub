@@ -109,37 +109,52 @@ class AuthService {
 
       const fbUser = userCredential.user;
       const userDocRef = doc(db, 'users', fbUser.uid);
-      const userSnap = await getDoc(userDocRef);
-
       const now = new Date().toISOString();
 
-      if (userSnap.exists()) {
-        await updateDoc(userDocRef, {
-          lastLoginAt: now,
-          status: 'online',
-        });
-        const data = userSnap.data() as User;
-        return {
-          ...data,
-          lastLoginAt: now,
-          status: 'online',
-        };
-      } else {
-        // Fallback create user document if absent
-        const fallbackProfile: User = {
+      let userProfile: User;
+      try {
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data() as User;
+          userProfile = {
+            ...data,
+            lastLoginAt: now,
+            status: 'online',
+          };
+          // Best-effort background update: NEVER let an auxiliary lastLoginAt error abort login
+          updateDoc(userDocRef, {
+            lastLoginAt: now,
+            status: 'online',
+          }).catch((err) => console.warn("Background lastLoginAt update non-fatal:", err));
+        } else {
+          // Fallback create user document if absent
+          userProfile = {
+            id: fbUser.uid,
+            name: fbUser.displayName || email.split('@')[0],
+            fullName: fbUser.displayName || email.split('@')[0],
+            email: fbUser.email || email,
+            avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.displayName || email)}`,
+            createdAt: now,
+            updatedAt: now,
+            lastLoginAt: now,
+            status: 'online',
+          };
+          setDoc(userDocRef, userProfile).catch((err) => console.warn("Background user doc creation non-fatal:", err));
+        }
+      } catch (docErr) {
+        console.warn("Could not fetch user profile from Firestore, falling back to Auth identity:", docErr);
+        userProfile = {
           id: fbUser.uid,
           name: fbUser.displayName || email.split('@')[0],
           fullName: fbUser.displayName || email.split('@')[0],
           email: fbUser.email || email,
-          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.displayName || email)}`,
+          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.uid)}`,
           createdAt: now,
-          updatedAt: now,
-          lastLoginAt: now,
           status: 'online',
         };
-        await setDoc(userDocRef, fallbackProfile);
-        return fallbackProfile;
       }
+
+      return userProfile;
     } catch (error: any) {
       throw new Error(this.formatAuthError(error));
     }
@@ -158,9 +173,14 @@ class AuthService {
             updatedAt: new Date().toISOString(),
           });
         } catch {
-          // Ignore offline status update if network fails
+          // Ignore offline status update if network or rules fail
         }
       }
+    } catch {
+      // Non-fatal
+    }
+
+    try {
       await signOut(auth);
     } catch (error: any) {
       throw new Error(this.formatAuthError(error));
