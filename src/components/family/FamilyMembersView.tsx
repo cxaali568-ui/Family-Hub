@@ -45,8 +45,9 @@ import {
   User,
   SlidersHorizontal,
   Gift,
-  Cake,
   Sparkles,
+  UserX,
+  AlertTriangle,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { UserProfileModal } from '../profile/UserProfileModal';
@@ -90,12 +91,23 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
   // Modals for Members
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMemberProfile | null>(null);
-  const [inspectedMember, setInspectedMember] = useState<FamilyMemberProfile | null>(null);
+  const [inspectedMemberId, setInspectedMemberId] = useState<string | null>(null);
 
   // Modals for Children
   const [isAddChildOpen, setIsAddChildOpen] = useState(false);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
-  const [inspectedChild, setInspectedChild] = useState<Child | null>(null);
+  const [inspectedChildId, setInspectedChildId] = useState<string | null>(null);
+
+  // Dynamically resolve inspected records from live state so data NEVER disappears or goes stale
+  const inspectedMember = useMemo(
+    () => (inspectedMemberId ? memberProfiles.find((m) => m.id === inspectedMemberId) || null : null),
+    [memberProfiles, inspectedMemberId]
+  );
+
+  const inspectedChild = useMemo(
+    () => (inspectedChildId ? children.find((c) => c.id === inspectedChildId) || null : null),
+    [children, inspectedChildId]
+  );
 
   // Search & Filter state for Members
   const [memberSearch, setMemberSearch] = useState('');
@@ -119,6 +131,24 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
   const [roleModalMember, setRoleModalMember] = useState<FamilyMember | null>(null);
   const [targetRole, setTargetRole] = useState<Role>('member');
   const [roleLoading, setRoleLoading] = useState(false);
+
+  // Remove / Block Member Account Modal
+  const [removeAccountModalMember, setRemoveAccountModalMember] = useState<FamilyMember | null>(null);
+  const [removeAccountLoading, setRemoveAccountLoading] = useState(false);
+
+  const handleRemoveMemberAccount = async () => {
+    if (!removeAccountModalMember || !currentFamily?.id) return;
+    setRemoveAccountLoading(true);
+    try {
+      await removeMember(removeAccountModalMember.userId, removeAccountModalMember.userName || 'Member');
+      showSuccess(`${removeAccountModalMember.userName || 'Member'} has been removed and blocked from this family.`);
+      setRemoveAccountModalMember(null);
+    } catch (err: any) {
+      showError(err?.message || 'Failed to remove member.');
+    } finally {
+      setRemoveAccountLoading(false);
+    }
+  };
 
   // Subscribe to Member Profiles
   useEffect(() => {
@@ -713,7 +743,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setInspectedMember(member)}
+                      onClick={() => setInspectedMemberId(member.id)}
                       icon={<ChevronRight className="w-4 h-4" />}
                       className="text-indigo-600 font-bold"
                     >
@@ -877,7 +907,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => setInspectedChild(child)}
+                      onClick={() => setInspectedChildId(child.id)}
                       className="font-bold text-xs"
                     >
                       View Details
@@ -970,10 +1000,17 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
                             setTargetRole(m.role);
                             setRoleModalMember(m);
                           }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title="Change Role"
                         >
                           <UserCheck className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setRemoveAccountModalMember(m)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                          title="Remove / Block from Family"
+                        >
+                          <UserX className="w-4 h-4" />
                         </button>
                       </div>
                     )}
@@ -1004,19 +1041,31 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
         existingMembers={familyMemberships}
         editProfile={editingMember}
         onMemberAdded={(saved) => {
-          // Live onSnapshot handles state update
+          // Immediately update optimistic state so user sees updated data with 0ms delay
+          setMemberProfiles((prev) => {
+            const idx = prev.findIndex((p) => p.id === saved.id);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { ...prev[idx], ...saved };
+              return updated;
+            }
+            return [saved, ...prev];
+          });
+          setIsAddMemberOpen(false);
+          setEditingMember(null);
+          // Keep inspected record active with latest saved information
+          setInspectedMemberId(saved.id);
         }}
       />
 
       {/* --- MEMBER DETAIL MODAL --- */}
       <MemberDetailModal
-        isOpen={Boolean(inspectedMember)}
-        onClose={() => setInspectedMember(null)}
+        isOpen={Boolean(inspectedMemberId && inspectedMember)}
+        onClose={() => setInspectedMemberId(null)}
         profile={inspectedMember}
         currentUser={currentUser!}
         canManage={familyPermissions.canManageMembers}
         onEdit={(prof) => {
-          setInspectedMember(null);
           setEditingMember(prof);
           setIsAddMemberOpen(true);
         }}
@@ -1027,6 +1076,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
             prof.fullName,
             currentUser!
           );
+          setInspectedMemberId(null);
         }}
       />
 
@@ -1041,24 +1091,36 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
         currentUser={currentUser!}
         editChild={editingChild}
         onChildSaved={(saved) => {
-          // Live onSnapshot handles state update
+          // Immediately update optimistic state for child
+          setChildren((prev) => {
+            const idx = prev.findIndex((c) => c.id === saved.id);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { ...prev[idx], ...saved };
+              return updated;
+            }
+            return [saved, ...prev];
+          });
+          setIsAddChildOpen(false);
+          setEditingChild(null);
+          setInspectedChildId(saved.id);
         }}
       />
 
       {/* --- CHILD DETAIL MODAL --- */}
       <ChildDetailModal
-        isOpen={Boolean(inspectedChild)}
-        onClose={() => setInspectedChild(null)}
+        isOpen={Boolean(inspectedChildId && inspectedChild)}
+        onClose={() => setInspectedChildId(null)}
         child={inspectedChild}
         currentUser={currentUser!}
         canManage={familyPermissions.canManageMembers}
         onEdit={(c) => {
-          setInspectedChild(null);
           setEditingChild(c);
           setIsAddChildOpen(true);
         }}
         onDelete={async (c) => {
           await childService.deleteChild(currentFamily.id, c.id, c.fullName, currentUser!);
+          setInspectedChildId(null);
         }}
       />
 
@@ -1157,6 +1219,57 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
             </Button>
             <Button variant="primary" onClick={handleRoleChangeSubmit} loading={roleLoading}>
               Save Role
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* --- REMOVE / BLOCK MEMBER ACCOUNT MODAL --- */}
+      <Modal
+        isOpen={Boolean(removeAccountModalMember)}
+        onClose={() => setRemoveAccountModalMember(null)}
+        title="Remove or Block Member"
+        subtitle={`Revoke family access for ${removeAccountModalMember?.userName || 'Member'}`}
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 space-y-2.5">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-300 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                  Are you sure you want to remove this member?
+                </h4>
+                <p className="text-xs text-rose-700 dark:text-rose-300">
+                  <strong>{removeAccountModalMember?.userName || 'Member'}</strong> ({removeAccountModalMember?.userEmail || 'Registered Member'}) will immediately lose all access to <strong>{currentFamily?.name}</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-rose-800 dark:text-rose-300 pl-10 space-y-1">
+              <p>• They will immediately be blocked from reading or sending family messages.</p>
+              <p>• They cannot view family expenses, calendar plans, or shared notes.</p>
+              <p>• They cannot rejoin without a new invite code issued by an Admin or Owner.</p>
+              <p>• Past messages and expenses recorded by them remain safely preserved.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setRemoveAccountModalMember(null)}
+              disabled={removeAccountLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleRemoveMemberAccount}
+              loading={removeAccountLoading}
+              icon={<UserX className="w-4 h-4" />}
+            >
+              Confirm Remove & Block
             </Button>
           </div>
         </div>

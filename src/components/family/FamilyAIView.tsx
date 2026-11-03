@@ -241,9 +241,11 @@ export const FamilyAIView: React.FC = () => {
         const errorMsg: AIMessage = {
           id: `${Date.now()}_err`,
           role: 'model',
-          text: err?.message?.includes('not configured')
-            ? 'AI provider is not configured yet. Please configure GEMINI_API_KEY or OPENAI_API_KEY in server secrets.'
-            : "AI couldn't complete this request. Please try again.",
+          text: err?.message
+            ? (err.message.includes('GEMINI_API_KEY') || err.message.includes('not configured') || err.message.includes('API key'))
+              ? `AI Configuration Notice: ${err.message}`
+              : `AI Notice: ${err.message}`
+            : "AI couldn't complete this request. Please verify GEMINI_API_KEY configuration.",
           timestamp: new Date().toISOString(),
           status: 'failed',
           errorCode: 'GENERATION_ERROR',

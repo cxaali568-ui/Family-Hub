@@ -14,6 +14,9 @@ import { Avatar } from '../ui/Avatar';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadingState } from '../ui/LoadingState';
 import { formatMessageDateDivider } from '../../utils/dateUtils';
+import { useNotifications } from '../../context/NotificationContext';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 import {
   Search,
   Users,
@@ -26,6 +29,11 @@ import {
   UserPlus,
   ShieldCheck,
   AlertCircle,
+  Bell,
+  Trash2,
+  Clock,
+  CheckCheck,
+  Smartphone,
 } from 'lucide-react';
 
 export const FamilyChatView: React.FC = () => {
@@ -43,9 +51,25 @@ export const FamilyChatView: React.FC = () => {
   const [showMembersDrawer, setShowMembersDrawer] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [activeMemberIds, setActiveMemberIds] = useState<string[]>([]);
   const [importantMessageIds, setImportantMessageIds] = useState<string[]>([]);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  // Notification management in Family Chat
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    mobilePushEnabled,
+    toggleMobilePush,
+  } = useNotifications();
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [clearingNotifs, setClearingNotifs] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +78,9 @@ export const FamilyChatView: React.FC = () => {
   // Compute active family chat room id
   const chatRoomId = family?.id ? `${family.id}_general` : '';
 
+  // Only consider chat room Live if other family members are active or typing
+  const isAnyoneLive = Boolean(typeof navigator !== 'undefined' && navigator.onLine && (activeMemberIds.length > 0 || typingUsers.length > 0));
+
   // Load user's starred/important messages from local preference
   useEffect(() => {
     if (user?.id) {
@@ -61,7 +88,7 @@ export const FamilyChatView: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Ensure chat room exists in Firestore and subscribe to messages
+  // Ensure chat room exists in Firestore, maintain presence heartbeat, and subscribe to messages
   useEffect(() => {
     if (!family?.id || !user?.id || !chatRoomId) {
       setMessages([]);
@@ -74,6 +101,16 @@ export const FamilyChatView: React.FC = () => {
 
     // Make sure room doc exists
     chatService.ensureChatRoomExists(chatRoomId, family.id, family.name, user.id);
+
+    // Register initial active presence in room
+    chatService.setInChatPresence(chatRoomId, user, true);
+
+    // Heartbeat presence every 25 seconds while chat view is open and tab is active
+    const heartbeatInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        chatService.setInChatPresence(chatRoomId, user, true);
+      }
+    }, 25000);
 
     // Subscribe to real-time messages
     const unsubMessages = chatService.subscribeMessages(
@@ -108,18 +145,21 @@ export const FamilyChatView: React.FC = () => {
       }
     );
 
-    // Subscribe to real-time typing indicators
-    const unsubTyping = chatService.subscribeTyping(
+    // Subscribe to real-time presence and typing indicators
+    const unsubPresence = chatService.subscribeActivePresence(
       chatRoomId,
       user.id,
-      (typers) => {
+      (activeIds, typers) => {
+        setActiveMemberIds(activeIds);
         setTypingUsers(typers);
       }
     );
 
     return () => {
+      clearInterval(heartbeatInterval);
+      chatService.setInChatPresence(chatRoomId, user, false);
       unsubMessages();
-      unsubTyping();
+      unsubPresence();
     };
   }, [chatRoomId, family?.id, user?.id]);
 
@@ -252,7 +292,7 @@ export const FamilyChatView: React.FC = () => {
             src={family?.photo || family?.avatar}
             name={family?.name || 'Family'}
             size="md"
-            status="online"
+            status={isAnyoneLive ? 'online' : 'offline'}
             className="ring-2 ring-indigo-500/20 shrink-0"
           />
           <div className="overflow-hidden">
@@ -260,13 +300,21 @@ export const FamilyChatView: React.FC = () => {
               <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {family?.name || 'Family'}
               </h2>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
-                Live
-              </span>
+              {/* Only show Live if there are actually active members present */}
+              {isAnyoneLive && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0 flex items-center gap-1 animate-in fade-in">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-              <span>{members.length} family members</span>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${isAnyoneLive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+              <span>
+                {isAnyoneLive
+                  ? `${activeMemberIds.length} member${activeMemberIds.length > 1 ? 's' : ''} online now`
+                  : `${members.length} family members`}
+              </span>
             </p>
           </div>
         </div>
@@ -309,6 +357,21 @@ export const FamilyChatView: React.FC = () => {
             title="View Family Members"
           >
             <Users className="w-5 h-5" />
+          </button>
+
+          {/* Notifications Management Toggle */}
+          <button
+            onClick={() => setShowNotificationModal(true)}
+            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title="Notifications & Alerts"
+            aria-label="Manage notifications"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
 
           {/* Logged-in User's Own Profile Avatar & Edit Profile Button */}
@@ -543,6 +606,7 @@ export const FamilyChatView: React.FC = () => {
           <div className="flex-1 overflow-y-auto py-4 space-y-3">
             {members.map((m) => {
               const isMe = m.userId === user?.id;
+              const isOnline = isMe || activeMemberIds.includes(m.userId);
               return (
                 <div
                   key={m.id}
@@ -552,7 +616,7 @@ export const FamilyChatView: React.FC = () => {
                     src={isMe ? (user?.avatar || user?.profileImage || m.userPhoto) : m.userPhoto}
                     name={isMe ? (user?.name || user?.fullName || m.userName || 'Member') : (m.userName || 'Member')}
                     size="md"
-                    status="online"
+                    status={isOnline ? 'online' : 'offline'}
                   />
                   <div className="overflow-hidden flex-1">
                     <div className="flex items-center gap-1.5">
@@ -565,9 +629,15 @@ export const FamilyChatView: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 capitalize">
-                      {m.role === 'owner' ? '👑 Family Owner' : m.role === 'admin' ? '⭐ Admin' : 'Family Member'}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[11px] text-slate-400 capitalize">
+                        {m.role === 'owner' ? '👑 Family Owner' : m.role === 'admin' ? '⭐ Admin' : 'Family Member'}
+                      </p>
+                      <span className="text-[10px] text-slate-300 dark:text-slate-700">•</span>
+                      <span className={`text-[10px] font-semibold ${isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                        {isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -593,6 +663,171 @@ export const FamilyChatView: React.FC = () => {
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
       />
+
+      {/* Family Chat Notification Management Modal */}
+      <Modal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        title="Notifications & Alerts"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {unreadCount > 0
+                  ? `${unreadCount} unread alert${unreadCount > 1 ? 's' : ''}`
+                  : 'All caught up!'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markAllAsRead()}
+                  className="px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Mark read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => setShowClearConfirmModal(true)}
+                  className="px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Notifications List */}
+          <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1">
+            {notifications.length === 0 ? (
+              <div className="text-center py-10 px-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center mx-auto mb-3 text-indigo-600 dark:text-indigo-400">
+                  <Bell className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  No alerts right now
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  You're all caught up with your family notifications!
+                </p>
+              </div>
+            ) : (
+              notifications.map((notif) => {
+                const isUnread = !notif.readAt;
+                const isUrgent = notif.type === 'urgent_item' || notif.type === 'urgent_need';
+                const isMsg = notif.type === 'new_message';
+                return (
+                  <div
+                    key={notif.id}
+                    className={`group relative p-3 rounded-xl border transition-all flex items-start gap-3 ${
+                      isUnread
+                        ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200/70 dark:border-indigo-800/60'
+                        : 'bg-white dark:bg-slate-900 border-slate-200/70 dark:border-slate-800'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+                        isUrgent
+                          ? 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
+                          : isMsg
+                          ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400'
+                          : 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400'
+                      }`}
+                    >
+                      {isUrgent ? (
+                        <AlertCircle className="w-4 h-4" />
+                      ) : isMsg ? (
+                        <MessageSquare className="w-4 h-4" />
+                      ) : (
+                        <Clock className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => {
+                        if (isUnread) markAsRead(notif.id);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                          {notif.title}
+                        </h5>
+                        {isUnread && (
+                          <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">
+                        {notif.message}
+                      </p>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
+                        {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notif.id);
+                      }}
+                      className="opacity-60 hover:opacity-100 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"
+                      title="Dismiss notification"
+                      aria-label="Dismiss"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal to Clear All Notifications */}
+      <Modal
+        isOpen={showClearConfirmModal}
+        onClose={() => setShowClearConfirmModal(false)}
+        title="Clear All Notifications?"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Clear all notifications? This will clear your personal notification alerts. Your chat messages and family records will not be affected.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowClearConfirmModal(false)}
+              disabled={clearingNotifs}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={clearingNotifs}
+              onClick={async () => {
+                try {
+                  setClearingNotifs(true);
+                  await clearAllNotifications();
+                  setShowClearConfirmModal(false);
+                } finally {
+                  setClearingNotifs(false);
+                }
+              }}
+            >
+              {clearingNotifs ? 'Clearing...' : 'Clear All'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

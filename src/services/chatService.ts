@@ -420,14 +420,83 @@ class ChatService {
           userId: user.id,
           userName: user.name,
           chatRoomId,
+          isTyping: true,
+          inChat: true,
           updatedAt: serverTimestamp(),
-        });
+        }, { merge: true });
       } else {
-        await deleteDoc(typingDocRef);
+        await setDoc(typingDocRef, {
+          isTyping: false,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
       }
     } catch {
       // Non-blocking presence
     }
+  }
+
+  /**
+   * Registers active presence in the chat room (heartbeat)
+   */
+  async setInChatPresence(chatRoomId: string, user: User, active: boolean): Promise<void> {
+    if (!chatRoomId || !user?.id) return;
+    const typingDocRef = doc(db, 'chatRooms', chatRoomId, 'typing', user.id);
+    try {
+      if (active) {
+        await setDoc(typingDocRef, {
+          id: user.id,
+          userId: user.id,
+          userName: user.name,
+          chatRoomId,
+          inChat: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } else {
+        await deleteDoc(typingDocRef);
+      }
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  /**
+   * Subscribes to active members and typing indicators in the room
+   */
+  subscribeActivePresence(
+    chatRoomId: string,
+    currentUserId: string,
+    callback: (activeUserIds: string[], typingUsers: string[]) => void
+  ): () => void {
+    if (!chatRoomId) {
+      callback([], []);
+      return () => {};
+    }
+
+    const typingCol = collection(db, 'chatRooms', chatRoomId, 'typing');
+
+    return onSnapshot(typingCol, (snapshot) => {
+      const activeIds: string[] = [];
+      const typers: string[] = [];
+      const now = Date.now();
+
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.userId && data.userId !== currentUserId) {
+          let isFresh = true;
+          if (data.updatedAt instanceof Timestamp) {
+            isFresh = now - data.updatedAt.toMillis() < 40000;
+          }
+          if (isFresh) {
+            activeIds.push(data.userId);
+            if (data.isTyping && data.userName) {
+              typers.push(data.userName);
+            }
+          }
+        }
+      });
+
+      callback(activeIds, typers);
+    });
   }
 
   /**
@@ -438,32 +507,8 @@ class ChatService {
     currentUserId: string,
     callback: (typingUsers: string[]) => void
   ): () => void {
-    if (!chatRoomId) {
-      callback([]);
-      return () => {};
-    }
-
-    const typingCol = collection(db, 'chatRooms', chatRoomId, 'typing');
-
-    return onSnapshot(typingCol, (snapshot) => {
-      const names: string[] = [];
-      const now = Date.now();
-
-      snapshot.forEach((d) => {
-        const data = d.data();
-        if (data.userId !== currentUserId) {
-          // Check heartbeat if present
-          let isFresh = true;
-          if (data.updatedAt instanceof Timestamp) {
-            isFresh = now - data.updatedAt.toMillis() < 6000;
-          }
-          if (isFresh && data.userName) {
-            names.push(data.userName);
-          }
-        }
-      });
-
-      callback(names);
+    return this.subscribeActivePresence(chatRoomId, currentUserId, (_, typers) => {
+      callback(typers);
     });
   }
 

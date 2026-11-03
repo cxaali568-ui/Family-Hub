@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -77,11 +77,86 @@ export const AddChildModal: React.FC<AddChildModalProps> = ({
 
   // Photo
   const [photoUrl, setPhotoUrl] = useState(editChild?.photo || '');
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize and prefill state whenever editChild changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (editChild) {
+        setFullName(editChild.fullName || '');
+        setNickname(editChild.nickname || '');
+        setGender(editChild.gender || 'male');
+        setDateOfBirth(editChild.dateOfBirth || '');
+        setBloodGroup(editChild.bloodGroup || '');
+        setRelationship(editChild.relationship || 'Son');
+        setPhone(editChild.phone || '');
+
+        setSchoolName(editChild.schoolName || '');
+        setSchoolAddress(editChild.schoolAddress || '');
+        setSchoolPhone(editChild.schoolPhone || '');
+        setSchoolEmail(editChild.schoolEmail || '');
+        setClassGrade(editChild.classGrade || '');
+        setSection(editChild.section || '');
+        setRollNumber(editChild.rollNumber || '');
+        setAdmissionNumber(editChild.admissionNumber || '');
+        setTeacherName(editChild.teacherName || '');
+        setTeacherPhone(editChild.teacherPhone || '');
+        setSchoolTiming(editChild.schoolTiming || '');
+
+        setTuitionFee(editChild.tuitionFee ?? '');
+        setTransportFee(editChild.transportFee ?? '');
+        setOtherFee(editChild.otherFee ?? '');
+        setFeeDueDate(editChild.feeDueDate || '');
+        setFeeNotes(editChild.feeNotes || '');
+
+        setEmergencyContactName(editChild.emergencyContactName || '');
+        setEmergencyContactRelation(editChild.emergencyContactRelation || '');
+        setEmergencyContactPhone(editChild.emergencyContactPhone || '');
+        setEmergencyContactAltPhone(editChild.emergencyContactAltPhone || '');
+        setEmergencyNotes(editChild.emergencyNotes || '');
+
+        setGeneralNotes(editChild.generalNotes || '');
+        setPhotoUrl(editChild.photo || '');
+      } else {
+        setFullName('');
+        setNickname('');
+        setGender('male');
+        setDateOfBirth('');
+        setBloodGroup('');
+        setRelationship('Son');
+        setPhone('');
+        setSchoolName('');
+        setSchoolAddress('');
+        setSchoolPhone('');
+        setSchoolEmail('');
+        setClassGrade('');
+        setSection('');
+        setRollNumber('');
+        setAdmissionNumber('');
+        setTeacherName('');
+        setTeacherPhone('');
+        setSchoolTiming('');
+        setTuitionFee('');
+        setTransportFee('');
+        setOtherFee('');
+        setFeeDueDate('');
+        setFeeNotes('');
+        setEmergencyContactName('');
+        setEmergencyContactRelation('');
+        setEmergencyContactPhone('');
+        setEmergencyContactAltPhone('');
+        setEmergencyNotes('');
+        setGeneralNotes('');
+        setPhotoUrl('');
+      }
+      setActiveTab('basic');
+      setError('');
+    }
+  }, [isOpen, editChild]);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Auto-calculated total monthly fee
   const calculatedTotalFee =

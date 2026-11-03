@@ -6,9 +6,10 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
-import { Heart, PlusCircle, Users, ArrowRight, Shield, Check, AlertCircle, LogOut, ShieldAlert } from 'lucide-react';
+import { Heart, PlusCircle, Users, ArrowRight, Shield, Check, AlertCircle, LogOut, ShieldAlert, HelpCircle } from 'lucide-react';
 import { FamilyInvite } from '../../types';
 import { FirestoreRulesModal } from './FirestoreRulesModal';
+import { ForgotCodeModal } from './ForgotCodeModal';
 
 interface OnboardingViewProps {
   onCancel?: () => void;
@@ -16,10 +17,11 @@ interface OnboardingViewProps {
 
 export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
   const { user, logout } = useAuth();
-  const { currentFamily, createFamily, inspectInviteCode, joinFamilyWithCode } = useFamily();
+  const { currentFamily, createFamily, inspectInviteCode, joinFamilyWithCode, switchFamily } = useFamily();
   const { t } = useLanguage();
 
   const [mode, setMode] = useState<'welcome' | 'create' | 'join'>('welcome');
+  const [showForgotCode, setShowForgotCode] = useState(false);
 
   // Create state
   const [familyName, setFamilyName] = useState('');
@@ -152,6 +154,17 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                     Use an invitation code (e.g. FAM-8K4P-29XQ)
                   </p>
+                </button>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotCode(true)}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  Forgot Family Code or Rejoining an existing family?
                 </button>
               </div>
 
@@ -295,6 +308,17 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
                     autoFocus
                   />
 
+                  <div className="flex justify-end -mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotCode(true)}
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      Forgot Family Code? / Rejoin Family
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-2 pt-2">
                     <Button
                       variant="ghost"
@@ -370,6 +394,16 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onCancel }) => {
       <FirestoreRulesModal
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
+      />
+      <ForgotCodeModal
+        isOpen={showForgotCode}
+        onClose={() => setShowForgotCode(false)}
+        currentUser={user}
+        onReconnected={(fam) => {
+          setShowForgotCode(false);
+          switchFamily(fam.id);
+          if (onCancel) onCancel();
+        }}
       />
     </div>
   );

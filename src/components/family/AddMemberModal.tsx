@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -80,6 +80,50 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronize and prefill state whenever editProfile changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (editProfile) {
+        setFullName(editProfile.fullName || '');
+        setNickname(editProfile.nickname || '');
+        if (editProfile.relationship && RELATIONSHIP_OPTIONS.includes(editProfile.relationship)) {
+          setRelationship(editProfile.relationship);
+          setCustomRelationship('');
+        } else if (editProfile.relationship) {
+          setRelationship('Other');
+          setCustomRelationship(editProfile.relationship);
+        } else {
+          setRelationship('Father');
+          setCustomRelationship('');
+        }
+        setGender(editProfile.gender || 'male');
+        setDateOfBirth(editProfile.dateOfBirth || '');
+        setPhone(editProfile.phone || '');
+        setEmail(editProfile.email || '');
+        setAddress(editProfile.address || '');
+        setNotes(editProfile.notes || '');
+        setIsChild(Boolean(editProfile.isChild));
+        setSelectedUserId(editProfile.userId || '');
+        setPhotoUrl(editProfile.profileImage || '');
+      } else {
+        setFullName('');
+        setNickname('');
+        setRelationship('Father');
+        setCustomRelationship('');
+        setGender('male');
+        setDateOfBirth('');
+        setPhone('');
+        setEmail('');
+        setAddress('');
+        setNotes('');
+        setIsChild(false);
+        setSelectedUserId('');
+        setPhotoUrl('');
+      }
+      setError('');
+    }
+  }, [isOpen, editProfile]);
+
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -131,39 +175,30 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     setLoading(true);
     try {
       if (isEditing && editProfile) {
+        const updates: Partial<FamilyMemberProfile> = {
+          fullName: fullName.trim(),
+          nickname: nickname.trim() || editProfile.nickname || undefined,
+          profileImage: photoUrl || editProfile.profileImage || undefined,
+          gender,
+          dateOfBirth: dateOfBirth || editProfile.dateOfBirth || undefined,
+          relationship: finalRelationship,
+          phone: phone.trim() || editProfile.phone || undefined,
+          email: email.trim() || editProfile.email || undefined,
+          address: address.trim() || editProfile.address || undefined,
+          isChild,
+          notes: notes.trim() || editProfile.notes || undefined,
+          userId: selectedUserId || editProfile.userId || null,
+        };
+
         await memberProfileService.updateMemberProfile(
           familyId,
           editProfile.id,
-          {
-            fullName: fullName.trim(),
-            nickname: nickname.trim() || undefined,
-            profileImage: photoUrl || undefined,
-            gender,
-            dateOfBirth: dateOfBirth || undefined,
-            relationship: finalRelationship,
-            phone: phone.trim() || undefined,
-            email: email.trim() || undefined,
-            address: address.trim() || undefined,
-            isChild,
-            notes: notes.trim() || undefined,
-            userId: selectedUserId || null,
-          },
+          updates,
           currentUser
         );
         onMemberAdded({
           ...editProfile,
-          fullName: fullName.trim(),
-          nickname: nickname.trim() || undefined,
-          profileImage: photoUrl || undefined,
-          gender,
-          dateOfBirth: dateOfBirth || undefined,
-          relationship: finalRelationship,
-          phone: phone.trim() || undefined,
-          email: email.trim() || undefined,
-          address: address.trim() || undefined,
-          isChild,
-          notes: notes.trim() || undefined,
-          userId: selectedUserId || null,
+          ...updates,
           updatedAt: new Date().toISOString(),
         });
       } else {

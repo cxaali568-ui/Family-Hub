@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   html {
     height: 100%;
@@ -15,7 +17,15 @@
   }
 
   [dir="rtl"], .font-urdu {
-    font-family: 'Noto Nastaliq Urdu', 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  .font-arabic {
+    font-family: 'Noto Sans Arabic', system-ui, sans-serif;
+  }
+
+  .font-farsi {
+    font-family: 'Noto Sans Arabic', system-ui, sans-serif;
   }
 }
 

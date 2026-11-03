@@ -31,6 +31,7 @@ import {
   LogOut,
   Check,
   Sparkles,
+  Share2,
 } from 'lucide-react';
 import { FamilyNavRoute } from '../../types';
 import { UserProfileModal } from '../profile/UserProfileModal';
@@ -57,6 +58,31 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [copiedQuickShare, setCopiedQuickShare] = useState(false);
+
+  const handleQuickShareApp = async () => {
+    const url = typeof window !== 'undefined' ? window.location.origin : 'https://familyhub.app';
+    const text = `Join our family on FamilyHub: ${url}${currentFamily?.inviteCode ? ` (Code: ${currentFamily.inviteCode})` : ''}`;
+
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({
+          title: currentFamily?.name ? `${currentFamily.name} — FamilyHub` : 'FamilyHub',
+          text,
+          url,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedQuickShare(true);
+      setTimeout(() => setCopiedQuickShare(false), 2000);
+    } catch {}
+  };
 
   // Exact navigation order specified in Step 10:
   // 1. Chat (MUST remain FIRST)
@@ -83,12 +109,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   }[] = [
     { id: 'chat', label: t.nav.chat, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'family', label: t.nav.family, icon: <Users className="w-4 h-4" /> },
-    { id: 'children', label: 'Children', icon: <GraduationCap className="w-4 h-4" /> },
+    { id: 'children', label: t.nav.children || 'Children', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'medical', label: t.nav.medical, icon: <HeartPulse className="w-4 h-4" /> },
     { id: 'expenses', label: t.nav.expenses || t.nav.money, icon: <DollarSign className="w-4 h-4" /> },
-    { id: 'bills', label: 'Bills', icon: <CreditCard className="w-4 h-4" /> },
+    { id: 'bills', label: t.nav.bills || 'Bills', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'notes', label: t.nav.notes, icon: <StickyNote className="w-4 h-4" /> },
-    { id: 'planner', label: 'Planner', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'planner', label: t.nav.planner || t.nav.plans || 'Planner', icon: <Calendar className="w-4 h-4" /> },
     { id: 'photos', label: t.nav.photos, icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'documents', label: t.nav.documents, icon: <FileText className="w-4 h-4" /> },
     {
@@ -106,7 +132,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
     },
     {
       id: 'ai',
-      label: 'AI Board',
+      label: t.ai?.title || 'AI Board',
       icon: <Sparkles className="w-4 h-4 text-indigo-500" />,
     },
     {
@@ -293,8 +319,20 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               </div>
             </div>
 
-            {/* Right: PWA + Notifications */}
+            {/* Right: Share + PWA + Notifications */}
             <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleQuickShareApp}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title={copiedQuickShare ? 'Link copied!' : 'Share FamilyHub App'}
+                aria-label="Share App Link"
+              >
+                {copiedQuickShare ? (
+                  <Check className="w-5 h-5 text-emerald-500" />
+                ) : (
+                  <Share2 className="w-5 h-5" />
+                )}
+              </button>
               <PWAInstallPrompt variant="button" className="text-[11px] py-1 px-2" />
               <button
                 onClick={() => setNotificationOpen(true)}
@@ -489,8 +527,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
               })}
             </nav>
 
-            {/* PWA Install Prompt in Mobile Menu */}
-            <div className="p-3 border-t border-slate-100 dark:border-slate-800">
+            {/* Share App + PWA Install in Mobile Menu */}
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleQuickShareApp();
+                }}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share App Link (ایپ لنک شیئر کریں)</span>
+              </button>
               <PWAInstallPrompt variant="menu-item" />
             </div>
           </div>

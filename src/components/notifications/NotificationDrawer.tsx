@@ -4,18 +4,40 @@ import { useFamily } from '../../context/FamilyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { EmptyState } from '../ui/EmptyState';
-import { Bell, Check, Clock, MessageSquare, AlertTriangle, DollarSign, Activity, X } from 'lucide-react';
+import { Bell, Check, Clock, MessageSquare, AlertTriangle, DollarSign, Activity, X, Trash2 } from 'lucide-react';
 import { NotificationType } from '../../types';
 
 export const NotificationDrawer: React.FC = () => {
-  const { notifications, unreadCount, isOpen, setIsOpen, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isOpen,
+    setIsOpen,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+  } = useNotifications();
   const { activityLogs } = useFamily();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<'notifications' | 'activity'>('notifications');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleConfirmClearAll = async () => {
+    setClearing(true);
+    try {
+      await clearAllNotifications();
+      setShowClearConfirm(false);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const getTypeIcon = (type: NotificationType) => {
     switch (type) {
@@ -55,13 +77,13 @@ export const NotificationDrawer: React.FC = () => {
 
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tabs & Mark All Read */}
+        {/* Tabs & Actions */}
         <div className="flex items-center justify-between px-4 pt-3 pb-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
           <div className="flex gap-2">
             <button
@@ -86,13 +108,23 @@ export const NotificationDrawer: React.FC = () => {
             </button>
           </div>
 
-          {activeTab === 'notifications' && unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              {t.common.markAllRead}
-            </button>
+          {activeTab === 'notifications' && notifications.length > 0 && (
+            <div className="flex items-center gap-2 pb-1.5">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  {t.common.markAllRead}
+                </button>
+              )}
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
+              >
+                Clear All
+              </button>
+            </div>
           )}
         </div>
 
@@ -106,30 +138,32 @@ export const NotificationDrawer: React.FC = () => {
                 description="When family members add bills, messages, or medical updates, you'll be notified here."
               />
             ) : (
-              notifications.map(n => (
+              notifications.map((n) => (
                 <div
                   key={n.id}
-                  onClick={() => markAsRead(n.id)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-xl border transition-all ${
                     !n.readAt
                       ? 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 shadow-2xs'
                       : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 opacity-80'
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 shadow-2xs shrink-0 mt-0.5">
+                    <div
+                      onClick={() => markAsRead(n.id)}
+                      className="p-2 rounded-lg bg-white dark:bg-slate-800 shadow-2xs shrink-0 mt-0.5 cursor-pointer"
+                    >
                       {getTypeIcon(n.type)}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                    <div className="flex-1 min-w-0" onClick={() => markAsRead(n.id)}>
+                      <div className="flex items-center justify-between gap-1">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                           {n.title}
                         </h4>
                         {!n.readAt && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                          <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 break-words">
                         {n.message}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
@@ -137,6 +171,18 @@ export const NotificationDrawer: React.FC = () => {
                         {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(n.id);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                      title="Dismiss notification"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))
@@ -165,6 +211,39 @@ export const NotificationDrawer: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear All Notifications?"
+        subtitle="This will permanently clear your notification alerts history."
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+            <strong>Note:</strong> Your family chat messages, bills, and medical records will remain completely intact. This only clears your personal notification alerts.
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowClearConfirm(false)}
+            >
+              {t.common.cancel}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={clearing}
+              onClick={handleConfirmClearAll}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              Clear All
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

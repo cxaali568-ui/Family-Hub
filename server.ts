@@ -111,6 +111,28 @@ app.get('/api/ai/status', (_req: Request, res: Response) => {
   res.json(serverAIService.getStatus());
 });
 
+function formatAIErrorMessage(rawMessage: string): string {
+  if (!rawMessage) return "AI request could not be completed. Please try again.";
+  if (rawMessage.includes('503') || rawMessage.includes('high demand') || rawMessage.includes('UNAVAILABLE')) {
+    return "Google Gemini is currently experiencing temporary high demand (503). Demand spikes are usually temporary; please retry in a moment.";
+  }
+  if (rawMessage.includes('API_KEY') || rawMessage.includes('not configured')) {
+    return "AI provider is not configured. Please ensure GEMINI_API_KEY is configured in server secrets.";
+  }
+  if (rawMessage.includes('429') || rawMessage.includes('RESOURCE_EXHAUSTED')) {
+    return "AI quota limit reached (429). Please wait a moment before trying again.";
+  }
+  try {
+    const parsed = JSON.parse(rawMessage);
+    if (parsed?.error?.message) {
+      return parsed.error.message;
+    }
+  } catch {
+    // not JSON
+  }
+  return rawMessage;
+}
+
 // ----------------------------------------------------
 // AI Chat Endpoint (Non-streaming)
 // ----------------------------------------------------
@@ -160,12 +182,11 @@ app.post('/api/ai/chat', async (req: Request, res: Response) => {
       fallbackUsed: response.fallbackUsed,
     });
   } catch (error: any) {
-    console.error('[AI Chat] Request failed:', error?.message || error);
+    const formatted = formatAIErrorMessage(error?.message || String(error));
+    console.error('[AI Chat] Request failed:', formatted);
     return res.status(500).json({
-      error: error?.message || "AI couldn't complete this request. Please try again.",
-      reply: error?.message?.includes('not configured')
-        ? 'AI provider is not configured yet. Please ensure GEMINI_API_KEY or OPENAI_API_KEY is configured on the server.'
-        : "AI couldn't complete this request. Please try again in a moment.",
+      error: formatted,
+      reply: formatted,
     });
   }
 });
@@ -241,13 +262,14 @@ app.post('/api/ai/stream', async (req: Request, res: Response) => {
       res.end();
     }
   } catch (error: any) {
-    console.error('[AI Stream] Failed:', error?.message || error);
+    const formatted = formatAIErrorMessage(error?.message || String(error));
+    console.error('[AI Stream] Failed:', formatted);
     if (!res.headersSent) {
-      return res.status(500).json({ error: error?.message || 'Streaming failed' });
+      return res.status(500).json({ error: formatted });
     }
     res.write(
       `data: ${JSON.stringify({
-        error: error?.message || "AI couldn't complete this request. Please try again.",
+        error: formatted,
       })}\n\n`
     );
     res.end();

@@ -172,9 +172,6 @@ export class GeminiProvider implements AIProvider {
     throw lastError || new Error('Failed to stream response with Gemini');
   }
 
-    throw lastError || new Error('Failed to stream response with Gemini');
-  }
-
   async generateTitle(prompt: string, reply?: string): Promise<string> {
     if (!this.isConfigured() || !this.client) {
       return prompt.slice(0, 30);

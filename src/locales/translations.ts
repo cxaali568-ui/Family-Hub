@@ -1,9 +1,31 @@
 /**
- * Centralized Internationalization Dictionary
- * Supports English (en - LTR) and Urdu (ur - RTL)
+ * Centralized Internationalization Dictionary for FamilyHub
+ * Supports 20 Languages with native script, RTL layout, and international formatting.
  */
 
-export type Language = 'en' | 'ur';
+import { LanguageCode } from './languages';
+import { en } from './locales/en';
+import { ur } from './locales/ur';
+import { ar } from './locales/ar';
+import { fa } from './locales/fa';
+import { fr } from './locales/fr';
+import { es } from './locales/es';
+import { de } from './locales/de';
+import { it } from './locales/it';
+import { pt } from './locales/pt';
+import { tr } from './locales/tr';
+import { zhCN } from './locales/zhCN';
+import { zhTW } from './locales/zhTW';
+import { ja } from './locales/ja';
+import { ko } from './locales/ko';
+import { hi } from './locales/hi';
+import { bn } from './locales/bn';
+import { ru } from './locales/ru';
+import { nl } from './locales/nl';
+import { id } from './locales/id';
+import { ms } from './locales/ms';
+
+export type Language = LanguageCode;
 
 export interface Translations {
   appName: string;
@@ -119,6 +141,41 @@ export interface Translations {
     copyCode: string;
     copied: string;
     profile: string;
+    appIdentity?: string;
+    appIdentityDesc?: string;
+    helpAndSupport?: string;
+    helpAndSupportDesc?: string;
+    contactSupport?: string;
+    privacyPolicy?: string;
+    privacyDesc?: string;
+    installPwa?: string;
+    logoutConfirmTitle?: string;
+    logoutConfirmDesc?: string;
+  };
+  onboarding?: {
+    welcomeTitle: string;
+    welcomeDesc: string;
+    createFamily: string;
+    createFamilyDesc: string;
+    joinFamily: string;
+    joinFamilyDesc: string;
+    forgotCodePrompt: string;
+    forgotCodeTitle: string;
+    rejoinFamily: string;
+    enterCode: string;
+    checkCode: string;
+    back: string;
+  };
+  ai?: {
+    title: string;
+    subtitle: string;
+    newChat: string;
+    stop: string;
+    send: string;
+    inputPlaceholder: string;
+    attachContext: string;
+    settings: string;
+    noChats: string;
   };
   common: {
     add: string;
@@ -137,267 +194,67 @@ export interface Translations {
   };
 }
 
-export const translations: Record<Language, Translations> = {
-  en: {
-    appName: "FamilyHub",
-    familySpace: "Family Space",
-    personalSpace: "Personal Space",
-    myPersonal: "🔒 My Personal",
-    privateSpaceBadge: "Strictly Private & Encrypted",
-    privateNotice: "No family member can see or access this space. Your personal records are securely isolated.",
-    nav: {
-      chat: "Chat",
-      family: "Members",
-      children: "Children",
-      expenses: "Expenses",
-      bills: "Bills",
-      money: "Money",
-      medical: "Medical",
-      plans: "Planner",
-      planner: "Planner",
-      photos: "Photos",
-      documents: "Documents",
-      notes: "Notes",
-      urgent: "Urgent",
-      notifications: "Notifications",
-      myPersonal: "🔒 My Personal",
-      settings: "Settings",
-    },
-    chat: {
-      title: "Family Chat",
-      subtitle: "Always connected with family",
-      online: "online",
-      typing: "is typing...",
-      typingMultiple: "are typing...",
-      inputPlaceholder: "Message your family...",
-      send: "Send",
-      attach: "Attach file or photo",
-      emoji: "Emoji",
-      reply: "Reply",
-      replyingTo: "Replying to",
-      cancelReply: "Cancel reply",
-      pinnedMessages: "Pinned Messages",
-      pin: "Pin message",
-      unpin: "Unpin",
-      searchMessages: "Search chat",
-      searchPlaceholder: "Search conversations...",
-      noMessagesTitle: "No messages yet",
-      noMessagesDesc: "Start the family conversation today.",
-      quickPrompts: {
-        grocery: "🛒 Can someone grab milk on the way home?",
-        dinner: "🍲 What are we having for dinner tonight?",
-        onMyWay: "🚗 On my way back home!",
-        emergency: "⚠️ Urgent: Please check notification!",
-      },
-    },
-    auth: {
-      loginTitle: "Welcome back to FamilyHub",
-      loginSubtitle: "Sign in to connect with your family and private space",
-      registerTitle: "Create your FamilyHub account",
-      registerSubtitle: "Start your connected family experience",
-      fullName: "Full Name",
-      emailOrPhone: "Email or Phone number",
-      password: "Password",
-      confirmPassword: "Confirm Password",
-      forgotPassword: "Forgot password?",
-      loginBtn: "Sign In",
-      registerBtn: "Create Account",
-      createAccount: "Don't have an account? Sign up",
-      haveAccount: "Already have an account? Sign in",
-      createFamily: "Create a New Family",
-      joinFamily: "Join Family with Code",
-      familyName: "Family Name (e.g. Khan Household)",
-      inviteCode: "Enter 6-digit Invite Code",
-      switchDemoUser: "Switch Demo Account",
-      logout: "Log Out",
-    },
-    personal: {
-      title: "My Personal Space",
-      lockTitle: "Private Space Locked",
-      lockDesc: "Enter your 4-digit PIN to access your private notes, expenses, and AI assistant.",
-      unlockBtn: "Unlock Space",
-      enterPin: "Enter 4-Digit Security PIN",
-      pinPlaceholder: "••••",
-      wrongPin: "Incorrect PIN. Default demo PIN is 1234.",
-      lockNow: "Lock Now",
-      enableLock: "Enable PIN Protection",
-      disableLock: "Disable PIN",
-      dashboard: "Personal Overview",
-      expenses: "Private Expenses",
-      schoolWork: "School & Work",
-      aiChat: "AI Assistant",
-      photos: "Private Photos",
-      documents: "Private Documents",
-      notebook: "Secret Notebook",
-      dailyNeeds: "Daily Needs",
-      plans: "Personal Plans",
-      aiTitle: "Personal AI Assistant",
-      aiSubtitle: "Your confidential helper for studying, budgeting, and planning",
-      aiInputPlaceholder: "Ask anything confidentially...",
-      roleGeneral: "General Assistant",
-      roleTutor: "Study & Homework Tutor",
-      roleBudget: "Personal Budget Advisor",
-      roleOrganizer: "Schedule & Daily Organizer",
-    },
-    settings: {
-      title: "Settings & Preferences",
-      language: "Language / زبان",
-      theme: "Appearance Theme",
-      light: "Light",
-      dark: "Dark",
-      system: "System Default",
-      personalLock: "Personal Space Lock",
-      familySettings: "Family Settings",
-      familyInviteCode: "Family Invite Code",
-      copyCode: "Copy Code",
-      copied: "Copied!",
-      profile: "Your Profile",
-    },
-    common: {
-      add: "Add New",
-      cancel: "Cancel",
-      save: "Save",
-      delete: "Delete",
-      edit: "Edit",
-      search: "Search...",
-      filter: "Filter",
-      all: "All",
-      unread: "Unread",
-      markAllRead: "Mark all as read",
-      noData: "Nothing to show right now.",
-      status: "Status",
-      loading: "Loading...",
-    },
-  },
-  ur: {
-    appName: "فیملی ہب (FamilyHub)",
-    familySpace: "خاندانی گوشہ",
-    personalSpace: "ذاتی گوشہ",
-    myPersonal: "🔒 میرا ذاتی گوشہ",
-    privateSpaceBadge: "مکمل طور پر نجی اور محفوظ",
-    privateNotice: "خاندان کا کوئی فرد اس گوشے تک رسائی حاصل نہیں کر سکتا۔ آپ کا تمام ڈیٹا الگ اور محفوظ ہے۔",
-    nav: {
-      chat: "گفتگو (چیٹ)",
-      family: "خاندان",
-      children: "بچے اور اسکول",
-      expenses: "اخراجات",
-      bills: "بلز",
-      money: "مالیات و اخراجات",
-      medical: "طبی معلومات",
-      plans: "پلانر و کیلنڈر",
-      planner: "پلانر و کیلنڈر",
-      photos: "تصاویر",
-      documents: "دستاویزات",
-      notes: "نوٹس",
-      urgent: "فوری ضروریات",
-      notifications: "اطلاعات",
-      myPersonal: "🔒 میرا ذاتی گوشہ",
-      settings: "ترتیبات",
-    },
-    chat: {
-      title: "خاندانی چیٹ",
-      subtitle: "ہمیشہ اپنوں کے قریب اور باخبر",
-      online: "آن لائن",
-      typing: "لکھ رہے ہیں...",
-      typingMultiple: "لکھ رہے ہیں...",
-      inputPlaceholder: "خاندان کو پیغام بھیجیں...",
-      send: "بھیجیں",
-      attach: "تصویر یا فائل منسلک کریں",
-      emoji: "ایموجی",
-      reply: "جواب دیں",
-      replyingTo: "جواب دیا جا رہا ہے",
-      cancelReply: "منسوخ",
-      pinnedMessages: "اہم پیغامات (پن شدہ)",
-      pin: "پن کریں",
-      unpin: "ان پن کریں",
-      searchMessages: "پیغامات تلاش کریں",
-      searchPlaceholder: "چیٹ میں تلاش کریں...",
-      noMessagesTitle: "ابھی تک کوئی پیغام نہیں",
-      noMessagesDesc: "آج ہی خاندانی گفتگو کا آغاز کریں۔",
-      quickPrompts: {
-        grocery: "🛒 کیا واپسی پر دودھ لایا جا سکتا ہے؟",
-        dinner: "🍲 آج رات کے کھانے میں کیا بن رہا ہے؟",
-        onMyWay: "🚗 میں گھر واپس آ رہا ہوں!",
-        emergency: "⚠️ فوری: براہ کرم اطلاع ملاحظہ کریں!",
-      },
-    },
-    auth: {
-      loginTitle: "فیملی ہب میں خوش آمدید",
-      loginSubtitle: "اپنے خاندان اور ذاتی گوشے تک رسائی کے لیے سائن ان کریں",
-      registerTitle: "نیا فیملی ہب اکاؤنٹ بنائیں",
-      registerSubtitle: "خاندان کے ساتھ پرسکون اور باہم مربوط شروعات",
-      fullName: "پورا نام",
-      emailOrPhone: "ای میل یا فون نمبر",
-      password: "پاس ورڈ",
-      confirmPassword: "پاس ورڈ کی تصدیق",
-      forgotPassword: "پاس ورڈ بھول گئے؟",
-      loginBtn: "سائن ان کریں",
-      registerBtn: "نیا اکاؤنٹ بنائیں",
-      createAccount: "اکاؤنٹ نہیں ہے؟ نیا اکاؤنٹ بنائیں",
-      haveAccount: "پہلے سے اکاؤنٹ موجود ہے؟ سائن ان کریں",
-      createFamily: "نیا خاندان بنائیں",
-      joinFamily: "کوڈ کے ذریعے شامل ہوں",
-      familyName: "خاندان کا نام (مثلاً: خان ہاؤس ہولڈ)",
-      inviteCode: "دعوت نامہ کوڈ درج کریں",
-      switchDemoUser: "ڈیمو اکاؤنٹ تبدیل کریں",
-      logout: "لاگ آؤٹ",
-    },
-    personal: {
-      title: "میرا ذاتی گوشہ",
-      lockTitle: "ذاتی گوشہ مقفل ہے",
-      lockDesc: "اپنے نجی نوٹس، اخراجات اور اے آئی تک رسائی کے لیے اپنا 4 ہندسوں والا پن درج کریں۔",
-      unlockBtn: "کھولیں",
-      enterPin: "4 ہندسوں کا سیکیورٹی پن درج کریں",
-      pinPlaceholder: "••••",
-      wrongPin: "غلط پن۔ ڈیفالٹ ڈیمو پن 1234 ہے۔",
-      lockNow: "ابھی مقفل کریں",
-      enableLock: "پن کا تحفظ فعال کریں",
-      disableLock: "پن ختم کریں",
-      dashboard: "ذاتی جائزہ",
-      expenses: "نجی اخراجات",
-      schoolWork: "تعلیم اور کام",
-      aiChat: "اے آئی اسسٹنٹ",
-      photos: "نجی تصاویر",
-      documents: "نجی دستاویزات",
-      notebook: "خفیہ ڈائری",
-      dailyNeeds: "روزمرہ ضروریات",
-      plans: "ذاتی منصوبے",
-      aiTitle: "ذاتی اے آئی مددگار",
-      aiSubtitle: "مطالعہ، بجٹ اور روزانہ کی منصوبہ بندی میں رازدارانہ معاون",
-      aiInputPlaceholder: "کوئی بھی سوال رازدارانہ انداز میں پوچھیں...",
-      roleGeneral: "عمومی معاون",
-      roleTutor: "تعلیمی استاد",
-      roleBudget: "بجٹ مشیر",
-      roleOrganizer: "شیڈول منتظم",
-    },
-    settings: {
-      title: "ترتیبات",
-      language: "زبان منتخب کریں",
-      theme: "ظاہری شکل (تھیم)",
-      light: "روشنی (لائٹ)",
-      dark: "تاریک (ڈارک)",
-      system: "سسٹم ڈیفالٹ",
-      personalLock: "ذاتی گوشے کا لاک",
-      familySettings: "خاندانی ترتیبات",
-      familyInviteCode: "خاندانی دعوتی کوڈ",
-      copyCode: "کوڈ کاپی کریں",
-      copied: "کاپی ہو گیا!",
-      profile: "آپ کا پروفائل",
-    },
-    common: {
-      add: "شامل کریں",
-      cancel: "منسوخ",
-      save: "محفوظ کریں",
-      delete: "حذف کریں",
-      edit: "تبدیل کریں",
-      search: "تلاش کریں...",
-      filter: "فلٹر",
-      all: "تمام",
-      unread: "غیر پڑھے ہوئے",
-      markAllRead: "سب کو پڑھا ہوا نشان زد کریں",
-      noData: "فی الحال کوئی مواد دستیاب نہیں ہے۔",
-      status: "حالت",
-      loading: "لوڈ ہو رہا ہے...",
-    },
-  },
+/**
+ * Deep fallback ensures any missing key inherits cleanly from English
+ */
+function mergeWithFallback(target: any, fallback: any): any {
+  if (!target || typeof target !== 'object') return fallback;
+  const result: any = Array.isArray(fallback) ? [...fallback] : { ...fallback };
+  for (const key of Object.keys(target)) {
+    const val = target[key];
+    if (val !== undefined && val !== null && val !== '') {
+      if (typeof val === 'object' && !Array.isArray(val) && typeof fallback[key] === 'object') {
+        result[key] = mergeWithFallback(val, fallback[key]);
+      } else {
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
+const rawTranslations: Record<LanguageCode, any> = {
+  en,
+  ur,
+  ar,
+  fa,
+  fr,
+  es,
+  de,
+  it,
+  pt,
+  tr,
+  'zh-CN': zhCN,
+  'zh-TW': zhTW,
+  ja,
+  ko,
+  hi,
+  bn,
+  ru,
+  nl,
+  id,
+  ms,
+};
+
+export const translations: Record<LanguageCode, Translations> = {
+  en,
+  ur: mergeWithFallback(ur, en),
+  ar: mergeWithFallback(ar, en),
+  fa: mergeWithFallback(fa, en),
+  fr: mergeWithFallback(fr, en),
+  es: mergeWithFallback(es, en),
+  de: mergeWithFallback(de, en),
+  it: mergeWithFallback(it, en),
+  pt: mergeWithFallback(pt, en),
+  tr: mergeWithFallback(tr, en),
+  'zh-CN': mergeWithFallback(zhCN, en),
+  'zh-TW': mergeWithFallback(zhTW, en),
+  ja: mergeWithFallback(ja, en),
+  ko: mergeWithFallback(ko, en),
+  hi: mergeWithFallback(hi, en),
+  bn: mergeWithFallback(bn, en),
+  ru: mergeWithFallback(ru, en),
+  nl: mergeWithFallback(nl, en),
+  id: mergeWithFallback(id, en),
+  ms: mergeWithFallback(ms, en),
 };

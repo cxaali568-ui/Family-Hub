@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -83,6 +84,41 @@ class NotificationService {
       await batch.commit();
     } catch (err) {
       console.warn("Could not mark all notifications as read:", err);
+    }
+  }
+
+  /**
+   * Dismisses and deletes an individual notification for the user
+   */
+  async deleteNotification(id: string): Promise<void> {
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+    } catch (err) {
+      console.warn("Could not delete notification:", err);
+    }
+  }
+
+  /**
+   * Clears all eligible notifications for the authenticated user
+   */
+  async clearAllNotifications(userId: string): Promise<void> {
+    try {
+      const q = query(
+        collection(db, 'notifications'),
+        where('recipientUserId', '==', userId)
+      );
+
+      const snap = await getDocs(q);
+      if (snap.empty) return;
+
+      const batch = writeBatch(db);
+      snap.forEach((d) => {
+        batch.delete(doc(db, 'notifications', d.id));
+      });
+
+      await batch.commit();
+    } catch (err) {
+      console.warn("Could not clear all notifications:", err);
     }
   }
 }

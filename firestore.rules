@@ -539,6 +539,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // --- Family Join & Code Recovery Requests ---
+    match /familyJoinRequests/{requestId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.familyId != null && isFamilyAdminOrOwner(resource.data.familyId)) ||
+        (resource.data.targetAdminEmail != null && request.auth.token.email != null && resource.data.targetAdminEmail == request.auth.token.email)
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        (resource.data.familyId != null && isFamilyAdminOrOwner(resource.data.familyId)) ||
+        (resource.data.targetAdminEmail != null && request.auth.token.email != null && resource.data.targetAdminEmail == request.auth.token.email)
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.familyId != null && isFamilyAdminOrOwner(resource.data.familyId))
+      );
+    }
+
     // --- Strictly Private Personal Records (ownerId partitioned) ---
     match /personalExpenses/{expenseId} {
       allow get, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
