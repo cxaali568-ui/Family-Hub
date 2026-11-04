@@ -278,8 +278,9 @@ export const HelpSupportCenter: React.FC<HelpSupportCenterProps> = ({
     try {
       const list = await fetchSupportTickets({
         userId: user.id,
+        userEmail: user.email,
         familyId: currentFamily?.id,
-        isAdmin: false,
+        isSuperAdmin: false,
       });
       setMyTickets(list);
     } catch (err) {
@@ -826,7 +827,7 @@ export const HelpSupportCenter: React.FC<HelpSupportCenterProps> = ({
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2 text-[11px] text-slate-500">
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Admin Notification:</strong> Your ticket will be submitted to the FamilyHub Support Registry and delivered to the authorized Administrator (<code className="text-indigo-600 dark:text-indigo-400">cxaali568@gmail.com</code>).
+                  <strong>Admin Notification:</strong> Your ticket will be securely submitted to the authorized App Support Team.
                 </span>
               </div>
 

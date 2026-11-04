@@ -144,9 +144,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
       isPersonal: true,
     },
     { id: 'settings', label: t.nav.settings, icon: <Settings className="w-4 h-4" /> },
-    ...((familyPermissions?.isAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com')
-      ? [{ id: 'support' as FamilyNavRoute, label: 'Support Admin', icon: <ShieldCheck className="w-4 h-4 text-emerald-500" /> }]
-      : []),
   ];
 
   const handleNavClick = (id: FamilyNavRoute) => {

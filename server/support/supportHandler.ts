@@ -4,11 +4,42 @@ import { serverAIService } from '../ai/AIService';
 import { HELP_ARTICLES } from '../../src/data/helpCenterFaq';
 import { SupportTicket, SupportMessage, GeneratedBugReport } from '../../src/types/support';
 
+import fs from 'fs';
+import path from 'path';
+
 const ADMIN_EMAIL = 'cxaali568@gmail.com';
+const TICKETS_FILE = path.join(process.cwd(), '.support-tickets-cache.json');
+
+const loadTicketsFromDisk = (): Map<string, SupportTicket> => {
+  const map = new Map<string, SupportTicket>();
+  try {
+    if (fs.existsSync(TICKETS_FILE)) {
+      const data = fs.readFileSync(TICKETS_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        for (const t of parsed) {
+          if (t && t.id) map.set(t.id, t);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Support Storage] Notice reading tickets cache:', e);
+  }
+  return map;
+};
+
+const saveTicketsToDisk = (map: Map<string, SupportTicket>) => {
+  try {
+    const list = Array.from(map.values());
+    fs.writeFileSync(TICKETS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('[Support Storage] Notice writing tickets cache:', e);
+  }
+};
 
 // In-memory persistent server storage cache for support tickets
-// (Synchronized with Firestore for durability)
-const ticketsStore = new Map<string, SupportTicket>();
+// (Synchronized with local file and Firestore for durability)
+const ticketsStore = loadTicketsFromDisk();
 
 // Helper to check if SMTP email is configured
 export function getEmailConfigStatus(): { configured: boolean; provider: string; recipient: string } {
@@ -398,8 +429,9 @@ export async function handleCreateTicket(req: Request, res: Response) {
       return res.status(400).json({ error: 'Missing required ticket fields' });
     }
 
-    // Store in server store
+    // Store in server store and persist
     ticketsStore.set(ticketData.id, ticketData);
+    saveTicketsToDisk(ticketsStore);
 
     // Trigger Admin Email Notification
     sendAdminEmailNotification({
@@ -462,6 +494,7 @@ export async function handleTicketReply(req: Request, res: Response) {
         }).catch(e => console.warn('[Email Reply Alert] Error:', e));
       }
       ticketsStore.set(ticketId, ticket);
+      saveTicketsToDisk(ticketsStore);
     }
 
     return res.json({ success: true, message: newMessage, ticket });
@@ -492,6 +525,7 @@ export async function handleUpdateTicket(req: Request, res: Response) {
     if (status === 'closed') ticket.closedAt = Date.now();
 
     ticketsStore.set(ticketId, ticket);
+    saveTicketsToDisk(ticketsStore);
 
     // If marked critical, alert admin
     if (priority === 'critical' && oldPriority !== 'critical') {
@@ -513,18 +547,23 @@ export async function handleUpdateTicket(req: Request, res: Response) {
 // 7. Get All Tickets (for Family Admin or Member filtered)
 export async function handleGetTickets(req: Request, res: Response) {
   try {
-    const { familyId, userId, isAdmin } = req.query;
+    const { familyId, userId, userEmail, isSuperAdmin } = req.query;
 
     const all = Array.from(ticketsStore.values());
 
-    let filtered = all;
-    if (familyId) {
-      filtered = filtered.filter(t => t.familyId === familyId);
-    }
+    const isAuthorizedSuperAdmin =
+      isSuperAdmin === 'true' &&
+      typeof userEmail === 'string' &&
+      userEmail.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
 
-    if (isAdmin !== 'true') {
-      // Ordinary members only see their own tickets
-      filtered = filtered.filter(t => t.userId === userId);
+    let filtered = all;
+    if (!isAuthorizedSuperAdmin) {
+      // Strict privacy: Ordinary users and family members only see their own tickets
+      filtered = filtered.filter(
+        t =>
+          (userId && t.userId === userId) ||
+          (userEmail && t.userEmail && t.userEmail.toLowerCase().trim() === String(userEmail).toLowerCase().trim())
+      );
     }
 
     // Sort newest first

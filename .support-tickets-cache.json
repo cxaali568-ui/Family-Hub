@@ -1,0 +1,27 @@
+[
+  {
+    "id": "t-persisted-1",
+    "referenceId": "FH-SUP-8822",
+    "userId": "user-ali-99",
+    "userEmail": "ali.member@khanhouse.internal",
+    "userName": "Ali Khan",
+    "category": "bug",
+    "priority": "high",
+    "status": "waiting_user",
+    "subject": "Camera photo upload failed",
+    "description": "Photo upload failed on mobile browser",
+    "createdAt": 1762238000000,
+    "updatedAt": 1793803226431,
+    "messages": [
+      {
+        "id": "msg-1793803226431-199",
+        "senderId": "super-admin",
+        "senderName": "App Support Team",
+        "senderEmail": "cxaali568@gmail.com",
+        "senderRole": "admin",
+        "text": "We have inspected your device settings. Please allow camera permissions in browser site settings.",
+        "createdAt": 1793803226431
+      }
+    ]
+  }
+]

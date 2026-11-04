@@ -45,11 +45,8 @@ export const AdminSupportDashboard: React.FC<AdminSupportDashboardProps> = ({ on
   const { user } = useAuth();
   const { currentFamily, familyPermissions } = useFamily();
 
-  // Security check: Only Family Owner/Admin or designated admin email cxaali568@gmail.com
-  const isAuthorized =
-    familyPermissions?.isAdmin ||
-    familyPermissions?.isOwner ||
-    user?.email?.toLowerCase() === 'cxaali568@gmail.com';
+  // Security check: Only designated App Super Admin cxaali568@gmail.com
+  const isAuthorized = user?.email?.toLowerCase() === 'cxaali568@gmail.com';
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +76,8 @@ export const AdminSupportDashboard: React.FC<AdminSupportDashboardProps> = ({ on
       const [ticketsList, statusData] = await Promise.all([
         fetchSupportTickets({
           familyId: currentFamily?.id,
-          isAdmin: true,
+          userEmail: user?.email,
+          isSuperAdmin: true,
         }),
         getSupportIntegrationStatus(),
       ]);

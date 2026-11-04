@@ -202,16 +202,18 @@ export const submitSupportTicket = async (input: SupportTicketInput): Promise<Su
 export const fetchSupportTickets = async (params: {
   familyId?: string;
   userId?: string;
-  isAdmin?: boolean;
+  userEmail?: string;
+  isSuperAdmin?: boolean;
 }): Promise<SupportTicket[]> => {
   const tickets: SupportTicket[] = [];
 
-  // Try server API first (which holds family-wide tickets for Admin)
+  // Try server API first
   try {
     const url = new URL('/api/support/tickets', window.location.origin);
     if (params.familyId) url.searchParams.set('familyId', params.familyId);
     if (params.userId) url.searchParams.set('userId', params.userId);
-    if (params.isAdmin) url.searchParams.set('isAdmin', 'true');
+    if (params.userEmail) url.searchParams.set('userEmail', params.userEmail);
+    if (params.isSuperAdmin) url.searchParams.set('isSuperAdmin', 'true');
 
     const response = await fetch(url.toString());
     if (response.ok) {

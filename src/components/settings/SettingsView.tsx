@@ -39,10 +39,10 @@ import {
   Volume2,
 } from 'lucide-react';
 import { PWAInstallPrompt } from '../ui/PWAInstallPrompt';
-import { submitSupportTicket } from '../../services/supportService';
 import { useNotifications } from '../../context/NotificationContext';
 import { HelpSupportCenter } from '../support/HelpSupportCenter';
 import { AdminSupportDashboard } from '../support/AdminSupportDashboard';
+import { PrivacyPolicyModal } from '../support/PrivacyPolicyModal';
 
 export const SettingsView: React.FC = () => {
   const { language, setLanguage, t, supportedLanguages, currentLanguageMeta } = useLanguage();
@@ -154,8 +154,8 @@ export const SettingsView: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
-  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [helpTab, setHelpTab] = useState<'support' | 'privacy' | 'faq'>('support');
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
+  const [isSuperAdminDashboardOpen, setIsSuperAdminDashboardOpen] = useState(false);
 
   // Language Search & Picker State
   const [langSearchQuery, setLangSearchQuery] = useState('');
@@ -172,18 +172,12 @@ export const SettingsView: React.FC = () => {
     );
   }, [supportedLanguages, langSearchQuery]);
 
-  // Support Ticket Form State
-  const [ticketCategory, setTicketCategory] = useState<'bug' | 'complaint' | 'help' | 'feature'>('help');
-  const [ticketSubject, setTicketSubject] = useState('');
-  const [ticketMessage, setTicketMessage] = useState('');
-  const [ticketSubmitting, setTicketSubmitting] = useState(false);
-  const [ticketResult, setTicketResult] = useState<{ referenceId: string } | null>(null);
-  const [ticketError, setTicketError] = useState<string | null>(null);
-
   const isFamilyAdmin =
     !familyRole ||
     familyRole === 'owner' ||
     currentFamily?.createdBy === user?.id;
+
+  const isSuperAdmin = user?.email?.toLowerCase() === 'cxaali568@gmail.com';
 
   const handleCopyCode = () => {
     if (!currentFamily?.inviteCode) return;
@@ -254,33 +248,6 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  // Support Ticket submission handler
-  const handleSubmitTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticketSubject.trim() || !ticketMessage.trim() || !user) return;
-    setTicketSubmitting(true);
-    setTicketError(null);
-    try {
-      const res = await submitSupportTicket({
-        userId: user.id,
-        userEmail: user.email || 'user@familyhub.internal',
-        userName: user.name || 'FamilyHub User',
-        category: ticketCategory,
-        subject: ticketSubject.trim(),
-        message: ticketMessage.trim(),
-        familyId: currentFamily?.id,
-        familyRole: familyRole || undefined,
-      });
-      setTicketResult({ referenceId: res.referenceId });
-      setTicketSubject('');
-      setTicketMessage('');
-    } catch (err: any) {
-      setTicketError(err?.message || 'Failed to submit support ticket.');
-    } finally {
-      setTicketSubmitting(false);
-    }
-  };
-
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div>
@@ -293,9 +260,18 @@ export const SettingsView: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* ================= 1. App Identity / FamilyHub Identity ================= */}
-        <Card className="space-y-4 md:col-span-2 border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-br from-white via-white to-amber-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20">
+      {/* ================= SECTION 1: APP SETTINGS ================= */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            App Settings
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* ================= 1. App Identity / FamilyHub Identity ================= */}
+          <Card className="space-y-4 md:col-span-2 border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-br from-white via-white to-amber-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -774,89 +750,7 @@ export const SettingsView: React.FC = () => {
           </div>
         </Card>
 
-        {/* ================= 4. Personal Space Security & Lock ================= */}
-        <Card className="space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-950 text-indigo-400">
-              <Lock className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                {t.settings.personalLock}
-              </h3>
-              <p className="text-xs text-slate-400">Protect private notes & budget with a PIN</p>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  PIN Security Protection
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  {profile?.isLockEnabled ? 'Active (Current PIN: 1234)' : 'Disabled'}
-                </p>
-              </div>
-              <Button
-                variant={profile?.isLockEnabled ? 'danger' : 'primary'}
-                size="sm"
-                onClick={handleToggleLock}
-              >
-                {profile?.isLockEnabled ? t.personal.disableLock : t.personal.enableLock}
-              </Button>
-            </div>
-
-            {pinSaved && (
-              <p className="text-xs text-emerald-600 font-semibold animate-in fade-in">
-                ✓ Personal Space PIN protection saved!
-              </p>
-            )}
-          </div>
-        </Card>
-
-        {/* ================= 5. Family Management & Invite Code ================= */}
-        {currentFamily && (
-          <Card className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {currentFamily.name}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  {currentFamily.settings?.currency || 'USD'} • Family ID: {currentFamily.id.slice(0, 12)}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase">
-                  {t.settings.familyInviteCode}
-                </p>
-                <p className="text-base font-mono font-extrabold text-indigo-600 dark:text-indigo-400 tracking-wider">
-                  {currentFamily.inviteCode || 'N/A'}
-                </p>
-              </div>
-              {currentFamily.inviteCode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyCode}
-                  className="text-xs"
-                  icon={copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                >
-                  {copiedCode ? t.settings.copied : t.settings.copyCode}
-                </Button>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* ================= 6. Install Mobile Web App (PWA) ================= */}
+        {/* ================= Install Mobile Web App (PWA) ================= */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
@@ -937,8 +831,102 @@ export const SettingsView: React.FC = () => {
             </a>
           </div>
         </Card>
+      </div>
+    </div>
 
-        {/* ================= 7. User Profile Card & Sign Out ================= */}
+    {/* ================= SECTION 2: PRIVACY & ACCOUNT ================= */}
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          Privacy & Account
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Personal Space Security & Lock */}
+        <Card className="space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-950 text-indigo-400">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {t.settings.personalLock}
+              </h3>
+              <p className="text-xs text-slate-400">Protect private notes & budget with a PIN</p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  PIN Security Protection
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {profile?.isLockEnabled ? 'Active (Current PIN: 1234)' : 'Disabled'}
+                </p>
+              </div>
+              <Button
+                variant={profile?.isLockEnabled ? 'danger' : 'primary'}
+                size="sm"
+                onClick={handleToggleLock}
+              >
+                {profile?.isLockEnabled ? t.personal.disableLock : t.personal.enableLock}
+              </Button>
+            </div>
+
+            {pinSaved && (
+              <p className="text-xs text-emerald-600 font-semibold animate-in fade-in">
+                ✓ Personal Space PIN protection saved!
+              </p>
+            )}
+          </div>
+        </Card>
+
+        {/* Family Management & Invite Code */}
+        {currentFamily && (
+          <Card className="space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  {currentFamily.name}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {currentFamily.settings?.currency || 'USD'} • Family ID: {currentFamily.id.slice(0, 12)}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase">
+                  {t.settings.familyInviteCode}
+                </p>
+                <p className="text-base font-mono font-extrabold text-indigo-600 dark:text-indigo-400 tracking-wider">
+                  {currentFamily.inviteCode || 'N/A'}
+                </p>
+              </div>
+              {currentFamily.inviteCode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyCode}
+                  className="text-xs"
+                  icon={copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                >
+                  {copiedCode ? t.settings.copied : t.settings.copyCode}
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* User Profile Card & Sign Out */}
         <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-slate-200 dark:border-slate-800 md:col-span-2">
           <div className="flex items-center gap-3.5">
             <div className="relative group cursor-pointer" onClick={() => setIsProfileModalOpen(true)}>
@@ -965,7 +953,19 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            {/* Super Admin Support Portal Button (Strictly visible only to authorized cxaali568@gmail.com) */}
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSuperAdminDashboardOpen(true)}
+                icon={<Shield className="w-3.5 h-3.5 text-indigo-500" />}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+              >
+                Super Admin Portal
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -986,193 +986,177 @@ export const SettingsView: React.FC = () => {
           </div>
         </Card>
       </div>
+    </div>
 
-      {/* ================= 8. Discreet Help & Support Subsection ================= */}
-      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              <HelpCircle className="w-4 h-4" />
+    {/* ================= SECTION 3: SUPPORT & PRIVACY ================= */}
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 pb-1.5 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          Support & Legal
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 1. Help & Support */}
+        <Card className="p-4 flex flex-col justify-between space-y-4 border-indigo-200/70 dark:border-indigo-900/40 bg-gradient-to-br from-white via-white to-indigo-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/20">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+              <HelpCircle className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                {t.settings.helpAndSupport || 'Help & Support'}
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span>Help & Support</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                  24/7 Center
+                </span>
               </h3>
-              <p className="text-[11px] text-slate-400">
-                {t.settings.helpAndSupportDesc || 'Instant AI troubleshooting, verified help articles, and technical support.'}
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                AI diagnostic assistant, ticket submission, my requests history, and verified help articles.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setHelpTab('support');
-                setIsHelpModalOpen(true);
-              }}
-              icon={<Sparkles className="w-3.5 h-3.5 text-indigo-500" />}
-              className="text-xs font-semibold shrink-0"
-            >
-              AI Help & Support Center
-            </Button>
-          </div>
-        </div>
 
-        {/* Dedicated Admin Support Dashboard Card (for cxaali568@gmail.com / Family Admin) */}
-        {(isFamilyAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com') && (
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/60 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                <Shield className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Admin Support Dashboard
-                  </h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
-                    cxaali568@gmail.com
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300">
-                  Inspect family tickets, reply to members, monitor email notifications & AI summaries
-                </p>
-              </div>
-            </div>
+          <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              AI Agent & Human Support
+            </span>
             <Button
-              size="sm"
               variant="primary"
-              onClick={() => setIsAdminDashboardOpen(true)}
-              icon={<Shield className="w-3.5 h-3.5" />}
-              className="text-xs font-bold shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white"
+              size="sm"
+              onClick={() => setIsHelpModalOpen(true)}
+              icon={<Sparkles className="w-3.5 h-3.5" />}
+              className="text-xs font-bold"
             >
-              Open Admin Dashboard →
+              Help & Support
             </Button>
           </div>
-        )}
-      </div>
+        </Card>
 
-      {/* ================= 9. Privacy Policy & Legal (Very Bottom / End of Page) ================= */}
-      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-                <Shield className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                  {t.settings.privacyPolicy || 'Privacy Policy & Data Security'}
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  {t.settings.privacyDesc || 'Your family records are isolated and protected under strict Firebase Security Rules.'}
-                </p>
-              </div>
+        {/* 2. Privacy Policy */}
+        <Card className="p-4 flex flex-col justify-between space-y-4 border-emerald-200/70 dark:border-emerald-900/40 bg-gradient-to-br from-white via-white to-emerald-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Shield className="w-5 h-5" />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setHelpTab('privacy');
-                setIsHelpModalOpen(true);
-              }}
-              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-            >
-              View Full Policy →
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
-              <strong className="text-slate-700 dark:text-slate-300 block mb-0.5">🔒 Data Ownership</strong>
-              All uploaded photos, notes, and records belong solely to your household.
-            </div>
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
-              <strong className="text-slate-700 dark:text-slate-300 block mb-0.5">🛡️ Isolated Personal Space</strong>
-              Personal budgets and notes are encrypted to your authenticated user account.
-            </div>
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
-              <strong className="text-slate-700 dark:text-slate-300 block mb-0.5">⚡ AI Privacy Protection</strong>
-              AI conversations are strictly private and never used to train public models.
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span>Privacy Policy</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                  Protected
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Household data ownership, isolated Personal Space PIN protection, and privacy rules.
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ================= Logout Confirmation Modal ================= */}
-      <Modal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        title="Sign Out of FamilyHub?"
-        subtitle="You will be safely signed out from this browser session."
-        maxWidth="sm"
-      >
-        <div className="space-y-4">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex items-start gap-2.5">
-            <LogOut className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-900 dark:text-amber-200">
-              You will need to sign in with your email and password again to access your family space.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Firebase Rules Enforced
+            </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsLogoutModalOpen(false)}
+              onClick={() => setIsPrivacyPolicyOpen(true)}
+              icon={<Shield className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+              className="text-xs font-bold text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
             >
-              Cancel (Stay Logged In)
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={async () => {
-                setIsLogoutModalOpen(false);
-                await logout();
-              }}
-              icon={<LogOut className="w-3.5 h-3.5" />}
-            >
-              Sign Out
+              Privacy Policy
             </Button>
           </div>
-        </div>
-      </Modal>
-
-      {/* ================= Full AI Support & Help Center Modal ================= */}
-      <Modal
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
-        title="FamilyHub Help & Support Center"
-        subtitle="AI Troubleshooting, Verified Documentation, and Member Support"
-        maxWidth="xl"
-      >
-        <HelpSupportCenter
-          initialTab={helpTab === 'faq' ? 'faq' : 'ai'}
-          onOpenAdminDashboard={() => {
-            setIsHelpModalOpen(false);
-            setIsAdminDashboardOpen(true);
-          }}
-          isAdmin={isFamilyAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com'}
-        />
-      </Modal>
-
-      {/* ================= Admin Support Dashboard Modal ================= */}
-      <Modal
-        isOpen={isAdminDashboardOpen}
-        onClose={() => setIsAdminDashboardOpen(false)}
-        title="FamilyHub Admin Support Dashboard"
-        subtitle="Live ticket management, notifications dispatcher, and member inquiries"
-        maxWidth="xl"
-      >
-        <AdminSupportDashboard onBackToApp={() => setIsAdminDashboardOpen(false)} />
-      </Modal>
-
-
-      {/* User Personal Profile Modal */}
-      <UserProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-      />
+        </Card>
+      </div>
     </div>
-  );
+
+    {/* ================= Modals ================= */}
+    {/* 1. Full Help & Support Center Modal (AI Diagnostics, FAQs, Submit Ticket, My Tickets) */}
+    <Modal
+      isOpen={isHelpModalOpen}
+      onClose={() => setIsHelpModalOpen(false)}
+      title="FamilyHub Help & Support Center"
+      subtitle="AI Diagnostics, Verified Documentation, Ticket Submission, and Member Requests"
+      maxWidth="xl"
+    >
+      <HelpSupportCenter
+        initialTab="ai"
+        onOpenAdminDashboard={
+          isSuperAdmin
+            ? () => {
+                setIsHelpModalOpen(false);
+                setIsSuperAdminDashboardOpen(true);
+              }
+            : undefined
+        }
+      />
+    </Modal>
+
+    {/* 4. Full Privacy Policy Modal */}
+    <PrivacyPolicyModal
+      isOpen={isPrivacyPolicyOpen}
+      onClose={() => setIsPrivacyPolicyOpen(false)}
+    />
+
+    {/* 5. Super Admin Support Portal (Strictly for authorized cxaali568@gmail.com) */}
+    {isSuperAdmin && (
+      <Modal
+        isOpen={isSuperAdminDashboardOpen}
+        onClose={() => setIsSuperAdminDashboardOpen(false)}
+        title="Super Admin Support Portal"
+        subtitle="Confidential ticket queue, reply composer, and notification dispatcher"
+        maxWidth="xl"
+      >
+        <AdminSupportDashboard onBackToApp={() => setIsSuperAdminDashboardOpen(false)} />
+      </Modal>
+    )}
+
+    {/* 6. Logout Confirmation Modal */}
+    <Modal
+      isOpen={isLogoutModalOpen}
+      onClose={() => setIsLogoutModalOpen(false)}
+      title="Sign Out of FamilyHub?"
+      subtitle="You will be safely signed out from this browser session."
+      maxWidth="sm"
+    >
+      <div className="space-y-4">
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex items-start gap-2.5">
+          <LogOut className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-900 dark:text-amber-200">
+            You will need to sign in with your email and password again to access your family space.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsLogoutModalOpen(false)}
+          >
+            Cancel (Stay Logged In)
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={async () => {
+              setIsLogoutModalOpen(false);
+              await logout();
+            }}
+            icon={<LogOut className="w-3.5 h-3.5" />}
+          >
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    </Modal>
+
+    {/* 7. User Personal Profile Modal */}
+    <UserProfileModal
+      isOpen={isProfileModalOpen}
+      onClose={() => setIsProfileModalOpen(false)}
+    />
+  </div>
+);
 };
