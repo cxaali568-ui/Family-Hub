@@ -94,6 +94,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (target.includes('/ai')) return 'ai';
       if (target.includes('/personal')) return 'personal';
       if (target.includes('/settings')) return 'settings';
+      if (target.includes('/support') || target.includes('/admin')) return 'support';
       if (target.includes('/family') || target.includes('/members')) return 'family';
       if (target.includes('/children')) return 'children';
     } catch {}

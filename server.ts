@@ -4,6 +4,17 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { serverAIService } from './server/ai/AIService';
+import {
+  handleGetSupportStatus,
+  handleAITroubleshoot,
+  handleAIGenerateReport,
+  handleCreateTicket,
+  handleTicketReply,
+  handleUpdateTicket,
+  handleGetTickets,
+  sendAdminEmailNotification,
+  sendWhatsAppNotification,
+} from './server/support/supportHandler';
 
 dotenv.config();
 
@@ -338,6 +349,28 @@ app.get('/api/health', (_req: Request, res: Response) => {
     aiStatus: serverAIService.getStatus(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// ----------------------------------------------------
+// FamilyHub Support & Troubleshooting Endpoints
+// ----------------------------------------------------
+app.get('/api/support/status', handleGetSupportStatus);
+app.post('/api/support/ai-troubleshoot', handleAITroubleshoot);
+app.post('/api/support/ai-generate-report', handleAIGenerateReport);
+app.get('/api/support/tickets', handleGetTickets);
+app.post('/api/support/tickets', handleCreateTicket);
+app.post('/api/support/tickets/:ticketId/reply', handleTicketReply);
+app.patch('/api/support/tickets/:ticketId/status', handleUpdateTicket);
+
+// Direct Notification Dispatchers
+app.post('/api/support/notify-email', async (req: Request, res: Response) => {
+  const result = await sendAdminEmailNotification(req.body);
+  res.json(result);
+});
+
+app.post('/api/support/notify-whatsapp', async (req: Request, res: Response) => {
+  const result = await sendWhatsAppNotification(req.body);
+  res.json(result);
 });
 
 async function startServer() {

@@ -29,6 +29,7 @@ import { FamilyAIView } from './components/family/FamilyAIView';
 import { FamilyPhotosDocsView } from './components/family/FamilyPhotosDocsView';
 import { PersonalSpaceView } from './components/personal/PersonalSpaceView';
 import { SettingsView } from './components/settings/SettingsView';
+import { AdminSupportDashboard } from './components/support/AdminSupportDashboard';
 import { LoadingState } from './components/ui/LoadingState';
 
 const MainContent: React.FC = () => {
@@ -66,6 +67,8 @@ const MainContent: React.FC = () => {
       return <PersonalSpaceView />;
     case 'settings':
       return <SettingsView />;
+    case 'support':
+      return <AdminSupportDashboard onBackToApp={() => window.history.pushState(null, '', '/settings')} />;
     default:
       return <FamilyChatView />;
   }

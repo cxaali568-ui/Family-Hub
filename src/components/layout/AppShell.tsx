@@ -32,6 +32,7 @@ import {
   Check,
   Sparkles,
   Share2,
+  ShieldCheck,
 } from 'lucide-react';
 import { FamilyNavRoute } from '../../types';
 import { UserProfileModal } from '../profile/UserProfileModal';
@@ -51,6 +52,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
     currentRoute,
     setCurrentRoute,
     urgentItems,
+    familyPermissions,
   } = useFamily();
   const { unreadCount, setIsOpen: setNotificationOpen } = useNotifications();
   const { t } = useLanguage();
@@ -142,6 +144,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
       isPersonal: true,
     },
     { id: 'settings', label: t.nav.settings, icon: <Settings className="w-4 h-4" /> },
+    ...((familyPermissions?.isAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com')
+      ? [{ id: 'support' as FamilyNavRoute, label: 'Support Admin', icon: <ShieldCheck className="w-4 h-4 text-emerald-500" /> }]
+      : []),
   ];
 
   const handleNavClick = (id: FamilyNavRoute) => {
@@ -537,7 +542,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
                 className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer"
               >
                 <Share2 className="w-4 h-4" />
-                <span>Share App Link (ایپ لنک شیئر کریں)</span>
+                <span>Share App Link</span>
               </button>
               <PWAInstallPrompt variant="menu-item" />
             </div>

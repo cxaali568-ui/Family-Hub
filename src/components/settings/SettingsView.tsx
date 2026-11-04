@@ -41,6 +41,8 @@ import {
 import { PWAInstallPrompt } from '../ui/PWAInstallPrompt';
 import { submitSupportTicket } from '../../services/supportService';
 import { useNotifications } from '../../context/NotificationContext';
+import { HelpSupportCenter } from '../support/HelpSupportCenter';
+import { AdminSupportDashboard } from '../support/AdminSupportDashboard';
 
 export const SettingsView: React.FC = () => {
   const { language, setLanguage, t, supportedLanguages, currentLanguageMeta } = useLanguage();
@@ -152,6 +154,7 @@ export const SettingsView: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [helpTab, setHelpTab] = useState<'support' | 'privacy' | 'faq'>('support');
 
   // Language Search & Picker State
@@ -881,9 +884,6 @@ export const SettingsView: React.FC = () => {
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <span>Share App Link</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                    شیئر لنک
-                  </span>
                 </h3>
                 <p className="text-xs text-slate-400">
                   Share FamilyHub with family members so they can open and join directly
@@ -999,7 +999,7 @@ export const SettingsView: React.FC = () => {
                 {t.settings.helpAndSupport || 'Help & Support'}
               </h3>
               <p className="text-[11px] text-slate-400">
-                {t.settings.helpAndSupportDesc || 'Have a question, need assistance, or want to report a problem? Contact our team.'}
+                {t.settings.helpAndSupportDesc || 'Instant AI troubleshooting, verified help articles, and technical support.'}
               </p>
             </div>
           </div>
@@ -1011,13 +1011,46 @@ export const SettingsView: React.FC = () => {
                 setHelpTab('support');
                 setIsHelpModalOpen(true);
               }}
-              icon={<Send className="w-3.5 h-3.5 text-indigo-500" />}
+              icon={<Sparkles className="w-3.5 h-3.5 text-indigo-500" />}
               className="text-xs font-semibold shrink-0"
             >
-              {t.settings.contactSupport || 'Contact Support'}
+              AI Help & Support Center
             </Button>
           </div>
         </div>
+
+        {/* Dedicated Admin Support Dashboard Card (for cxaali568@gmail.com / Family Admin) */}
+        {(isFamilyAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com') && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/60 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Admin Support Dashboard
+                  </h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                    cxaali568@gmail.com
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Inspect family tickets, reply to members, monitor email notifications & AI summaries
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => setIsAdminDashboardOpen(true)}
+              icon={<Shield className="w-3.5 h-3.5" />}
+              className="text-xs font-bold shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white"
+            >
+              Open Admin Dashboard →
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ================= 9. Privacy Policy & Legal (Very Bottom / End of Page) ================= */}
@@ -1105,239 +1138,35 @@ export const SettingsView: React.FC = () => {
         </div>
       </Modal>
 
-      {/* ================= Privacy Policy & Support Center Modal ================= */}
+      {/* ================= Full AI Support & Help Center Modal ================= */}
       <Modal
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
-        title="Privacy Policy, Help & Support"
-        subtitle="Submit tickets, review privacy terms, and access help documentation."
-        maxWidth="lg"
+        title="FamilyHub Help & Support Center"
+        subtitle="AI Troubleshooting, Verified Documentation, and Member Support"
+        maxWidth="xl"
       >
-        <div className="space-y-4">
-          {/* Tabs */}
-          <div className="flex border-b border-slate-100 dark:border-slate-800 pb-2 gap-2">
-            <button
-              onClick={() => setHelpTab('support')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                helpTab === 'support'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              Submit Ticket / Complaint
-            </button>
-            <button
-              onClick={() => setHelpTab('privacy')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                helpTab === 'privacy'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              Privacy Policy
-            </button>
-            <button
-              onClick={() => setHelpTab('faq')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                helpTab === 'faq'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              FAQ & Help
-            </button>
-          </div>
-
-          {/* Tab 1: Submit Support Ticket */}
-          {helpTab === 'support' && (
-            <div className="space-y-4">
-              {ticketResult ? (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto">
-                    <Check className="w-5 h-5" />
-                  </div>
-                  <h4 className="text-sm font-extrabold text-emerald-900 dark:text-emerald-100">
-                    Ticket Submitted Successfully!
-                  </h4>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                    Your reference number is:{' '}
-                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm">
-                      {ticketResult.referenceId}
-                    </span>
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Our team and system have recorded your request in the FamilyHub support registry.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setTicketResult(null)}
-                    className="mt-2 text-xs"
-                  >
-                    Submit Another Ticket
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitTicket} className="space-y-3">
-                  {/* Safeguards Notice */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2 text-[11px] text-slate-500">
-                    <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Safeguards Active:</strong> Authenticated submission only • Limit: 3 tickets per hour • Duplicate protection active. Ordinary members can submit tickets; ticket management is reserved for Family Admins.
-                    </span>
-                  </div>
-
-                  {ticketError && (
-                    <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-start gap-2 animate-in fade-in">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>{ticketError}</span>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Issue Category
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { id: 'bug', label: 'Bug Report' },
-                        { id: 'complaint', label: 'Complaint' },
-                        { id: 'help', label: 'Help / Question' },
-                        { id: 'feature', label: 'Feature Request' },
-                      ].map(cat => (
-                        <button
-                          type="button"
-                          key={cat.id}
-                          onClick={() => setTicketCategory(cat.id as any)}
-                          className={`p-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center ${
-                            ticketCategory === cat.id
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Subject
-                    </label>
-                    <Input
-                      value={ticketSubject}
-                      onChange={e => setTicketSubject(e.target.value)}
-                      placeholder="Brief summary of your question or issue"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Detailed Message
-                    </label>
-                    <textarea
-                      value={ticketMessage}
-                      onChange={e => setTicketMessage(e.target.value)}
-                      placeholder="Please describe what happened, steps to reproduce, or what you need help with..."
-                      required
-                      rows={4}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                    />
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      loading={ticketSubmitting}
-                      icon={<Send className="w-3.5 h-3.5" />}
-                    >
-                      Submit Support Ticket
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
-
-          {/* Tab 2: Privacy Policy */}
-          {helpTab === 'privacy' && (
-            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-h-[50vh] overflow-y-auto pr-1">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40">
-                <h4 className="font-bold text-indigo-900 dark:text-indigo-200 text-xs">
-                  FamilyHub Privacy Commitment
-                </h4>
-                <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5">
-                  Your family data is private, isolated, and strictly protected under Google Firebase Security Rules.
-                </p>
-              </div>
-
-              <div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-100">1. Data Ownership & Scope</h5>
-                <p>
-                  All photos, messages, expense receipts, medical logs, and notes uploaded to FamilyHub belong entirely to your household. We never sell, advertise, or share your family records with third parties.
-                </p>
-              </div>
-
-              <div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-100">2. Personal Space Isolation</h5>
-                <p>
-                  Notes and budgets created inside your Personal Space are locked to your individual authenticated user ID with optional PIN protection. Other family members cannot view or search your private vault.
-                </p>
-              </div>
-
-              <div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-100">3. Artificial Intelligence Privacy</h5>
-                <p>
-                  AI queries sent to the FamilyHub AI Board are processed exclusively for answering your family questions and assistance. Private family conversations are not used for public model training.
-                </p>
-              </div>
-
-              <div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-100">4. Account Deletion & Right to be Forgotten</h5>
-                <p>
-                  You may request complete removal of your profile and data by submitting a ticket in the Support tab.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: FAQ */}
-          {helpTab === 'faq' && (
-            <div className="space-y-3 text-xs max-h-[50vh] overflow-y-auto pr-1">
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">
-                  How do I invite members to Khan House?
-                </h5>
-                <p className="text-slate-500">
-                  Share the Family Invite Code from Settings with your spouse or children. When they log in, they can enter the code to join your shared family space.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">
-                  How does the AI Board work?
-                </h5>
-                <p className="text-slate-500">
-                  Click 'AI Board' in the navigation menu to ask questions about meal planning, schedule advice, parenting tips, or household organization.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">
-                  Can I send voice notes in Family Chat?
-                </h5>
-                <p className="text-slate-500">
-                  Yes! Tap the microphone icon in the chat composer to record a voice message, then tap send to post it for your family to listen to.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        <HelpSupportCenter
+          initialTab={helpTab === 'faq' ? 'faq' : 'ai'}
+          onOpenAdminDashboard={() => {
+            setIsHelpModalOpen(false);
+            setIsAdminDashboardOpen(true);
+          }}
+          isAdmin={isFamilyAdmin || user?.email?.toLowerCase() === 'cxaali568@gmail.com'}
+        />
       </Modal>
+
+      {/* ================= Admin Support Dashboard Modal ================= */}
+      <Modal
+        isOpen={isAdminDashboardOpen}
+        onClose={() => setIsAdminDashboardOpen(false)}
+        title="FamilyHub Admin Support Dashboard"
+        subtitle="Live ticket management, notifications dispatcher, and member inquiries"
+        maxWidth="xl"
+      >
+        <AdminSupportDashboard onBackToApp={() => setIsAdminDashboardOpen(false)} />
+      </Modal>
+
 
       {/* User Personal Profile Modal */}
       <UserProfileModal

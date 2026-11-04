@@ -1470,7 +1470,8 @@ export type FamilyNavRoute =
   | 'notifications'
   | 'ai'
   | 'personal'
-  | 'settings';
+  | 'settings'
+  | 'support';
 
 export type PersonalNavRoute =
   | 'dashboard'
@@ -1485,3 +1486,5 @@ export type PersonalNavRoute =
   | 'reminders'
   | 'reports'
   | 'settings';
+
+export * from './support';
