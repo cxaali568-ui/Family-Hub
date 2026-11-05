@@ -46,6 +46,10 @@ interface FamilyContextType {
   updateMemberRole: (targetUserId: string, newRole: Role) => Promise<void>;
   removeMember: (targetUserId: string, targetUserName: string) => Promise<void>;
   activityLogs: ActivityLog[];
+  deleteActivityLog: (activityId: string) => Promise<void>;
+  clearAllActivityLogs: () => Promise<void>;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
 
   // Data helpers for modules preserved from Step 1
   expenses: FamilyExpense[];
@@ -76,6 +80,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingFamilies, setLoadingFamilies] = useState<boolean>(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const parseCurrentPath = (): FamilyNavRoute => {
     try {
@@ -431,6 +436,17 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return url;
   };
 
+  const deleteActivityLog = async (activityId: string): Promise<void> => {
+    setActivityLogs(prev => prev.filter(l => l.id !== activityId));
+    await familyService.deleteActivityLog(activityId);
+  };
+
+  const clearAllActivityLogs = async (): Promise<void> => {
+    if (!currentFamily?.id) return;
+    setActivityLogs([]);
+    await familyService.clearAllActivityLogs(currentFamily.id);
+  };
+
   return (
     <FamilyContext.Provider
       value={{
@@ -454,6 +470,10 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateMemberRole,
         removeMember,
         activityLogs,
+        deleteActivityLog,
+        clearAllActivityLogs,
+        mobileMenuOpen,
+        setMobileMenuOpen,
         expenses,
         bills,
         medicalRecords,

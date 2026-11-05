@@ -13,6 +13,7 @@ import {
   Timestamp,
   getDocs,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import {
   ref,
@@ -218,6 +219,37 @@ class ChatService {
       reactions: {},
       updatedAt: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Clears all messages in a chat room for all members
+   */
+  async clearAllMessages(chatRoomId: string, actor?: { id: string; name?: string }): Promise<void> {
+    if (!chatRoomId) return;
+    try {
+      const messagesCol = collection(db, 'chatRooms', chatRoomId, 'messages');
+      const snap = await getDocs(messagesCol);
+      const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+
+      // Optionally post a brief system note that the chat was cleared
+      if (actor) {
+        const sysRef = doc(messagesCol);
+        await setDoc(sysRef, {
+          id: sysRef.id,
+          chatRoomId,
+          senderId: 'system',
+          senderName: 'System',
+          text: `Chat was cleared by ${actor.name || 'a member'}.`,
+          type: 'system',
+          createdAt: new Date().toISOString(),
+          isSystem: true,
+        });
+      }
+    } catch (err) {
+      console.error("Could not clear all chat messages:", err);
+      throw err;
+    }
   }
 
   /**

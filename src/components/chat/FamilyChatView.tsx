@@ -34,11 +34,13 @@ import {
   Clock,
   CheckCheck,
   Smartphone,
+  Menu,
+  MoreVertical,
 } from 'lucide-react';
 
 export const FamilyChatView: React.FC = () => {
   const { user } = useAuth();
-  const { family, members, familyPermissions, setCurrentRoute, hasNoFamily, loadingFamilies } = useFamily();
+  const { family, members, familyPermissions, setCurrentRoute, hasNoFamily, loadingFamilies, setMobileMenuOpen } = useFamily();
   const { t } = useLanguage();
   const { showError } = useToast();
 
@@ -55,6 +57,42 @@ export const FamilyChatView: React.FC = () => {
   const [importantMessageIds, setImportantMessageIds] = useState<string[]>([]);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [showClearChatConfirmModal, setShowClearChatConfirmModal] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close 3-dots overflow menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    if (moreMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [moreMenuOpen]);
+
+  const handleClearAllChatMessages = async () => {
+    if (!chatRoomId || !user) return;
+    setClearingChat(true);
+    try {
+      await chatService.clearAllMessages(chatRoomId, {
+        id: user.id,
+        name: user.name || user.fullName || 'Family Member',
+      });
+      setShowClearChatConfirmModal(false);
+      setMoreMenuOpen(false);
+    } catch (err: any) {
+      showError(err?.message || 'Could not clear chat messages.');
+    } finally {
+      setClearingChat(false);
+    }
+  };
 
   // Notification management in Family Chat
   const {
@@ -285,84 +323,102 @@ export const FamilyChatView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
-      {/* Top Bar Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-10 shrink-0">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <Avatar
-            src={family?.photo || family?.avatar}
-            name={family?.name || 'Family'}
-            size="md"
-            status={isAnyoneLive ? 'online' : 'offline'}
-            className="ring-2 ring-indigo-500/20 shrink-0"
-          />
-          <div className="overflow-hidden">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                {family?.name || 'Family'}
-              </h2>
-              {/* Only show Live if there are actually active members present */}
-              {isAnyoneLive && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0 flex items-center gap-1 animate-in fade-in">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
+      {/* WhatsApp / Upwork Style Top Bar Header */}
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-10 shrink-0 min-h-[56px]">
+        {/* Left: 3-line hamburger menu for mobile + Family Avatar & Name */}
+        <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+          {/* 3-line menu button on mobile so user can jump to any section */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="lg:hidden min-h-[44px] min-w-[44px] -ml-1 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            aria-label="Open Navigation Menu"
+            title="Open Navigation Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Family Avatar & Info (WhatsApp contact style) */}
+          <div
+            onClick={() => setShowMembersDrawer(true)}
+            className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-98 transition-all"
+            title="View Family Details & Members"
+          >
+            <Avatar
+              src={family?.photo || family?.avatar}
+              name={family?.name || 'Family'}
+              size="md"
+              status={isAnyoneLive ? 'online' : 'offline'}
+              className="ring-2 ring-indigo-500/20 shrink-0"
+            />
+            <div className="overflow-hidden">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                  {family?.name || 'Family'}
+                </h2>
+                {isAnyoneLive && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
+                <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${isAnyoneLive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                <span>
+                  {isAnyoneLive
+                    ? `${activeMemberIds.length} online now`
+                    : `${members.length} members`}
                 </span>
-              )}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
-              <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${isAnyoneLive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
-              <span>
-                {isAnyoneLive
-                  ? `${activeMemberIds.length} member${activeMemberIds.length > 1 ? 's' : ''} online now`
-                  : `${members.length} family members`}
-              </span>
-            </p>
           </div>
         </div>
 
-        {/* Action icons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Starred / Important Messages Filter */}
-          <button
-            onClick={() => setShowImportantOnly(!showImportantOnly)}
-            className={`p-2 rounded-xl transition-colors ${
-              showImportantOnly
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-            title={showImportantOnly ? 'Show all messages' : 'Show starred messages only'}
-          >
-            <Star className={`w-5 h-5 ${showImportantOnly ? 'fill-current' : ''}`} />
-          </button>
-
+        {/* Right: WhatsApp-style Search + 3-Dots Overflow Menu (plus desktop shortcuts) */}
+        <div className="flex items-center gap-1 shrink-0 relative" ref={moreMenuRef}>
           {/* Search Toggle */}
           <button
             onClick={() => {
               setIsSearching(!isSearching);
               if (isSearching) setSearchQuery('');
             }}
-            className={`p-2 rounded-xl transition-colors ${
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
               isSearching
                 ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
             title={t.chat.searchMessages || 'Search messages'}
+            aria-label="Search messages"
           >
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Members Drawer Toggle */}
+          {/* Desktop quick shortcuts */}
           <button
-            onClick={() => setShowMembersDrawer(!showMembersDrawer)}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            onClick={() => setShowImportantOnly(!showImportantOnly)}
+            className={`hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors cursor-pointer ${
+              showImportantOnly
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title={showImportantOnly ? 'Show all messages' : 'Show starred messages only'}
+            aria-label="Starred messages"
+          >
+            <Star className={`w-5 h-5 ${showImportantOnly ? 'fill-current text-amber-500' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => setShowMembersDrawer(true)}
+            className="hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="View Family Members"
+            aria-label="Family members"
           >
             <Users className="w-5 h-5" />
           </button>
 
-          {/* Notifications Management Toggle */}
           <button
             onClick={() => setShowNotificationModal(true)}
-            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="hidden sm:flex relative min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="Notifications & Alerts"
             aria-label="Manage notifications"
           >
@@ -374,12 +430,12 @@ export const FamilyChatView: React.FC = () => {
             )}
           </button>
 
-          {/* Logged-in User's Own Profile Avatar & Edit Profile Button */}
+          {/* Logged-in User's Own Profile Avatar (Desktop) */}
           {user && (
             <button
               onClick={() => setProfileModalOpen(true)}
-              className="ml-1 p-0.5 rounded-full hover:ring-2 hover:ring-indigo-500/60 transition-all cursor-pointer group relative shrink-0"
-              title={`My Profile (${user.name || user.fullName || 'User'}) - Click to edit`}
+              className="hidden sm:flex ml-0.5 p-0.5 rounded-full hover:ring-2 hover:ring-indigo-500/60 transition-all cursor-pointer group relative shrink-0"
+              title={`My Profile (${user.name || user.fullName || 'User'})`}
             >
               <Avatar
                 src={user.avatar || user.profileImage}
@@ -391,6 +447,105 @@ export const FamilyChatView: React.FC = () => {
                 ✎
               </span>
             </button>
+          )}
+
+          {/* 3-Dots WhatsApp Overflow Menu Button */}
+          <button
+            onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
+              moreMenuOpen
+                ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Chat Options & Menu"
+            aria-label="More options"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          {/* WhatsApp / Upwork Style Dropdown Menu */}
+          {moreMenuOpen && (
+            <div className="absolute top-12 right-0 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setMobileMenuOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <Menu className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Open Navigation Menu</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setShowMembersDrawer(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <Users className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <span>Family Members & Info</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setShowImportantOnly(!showImportantOnly);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <Star className={`w-4 h-4 ${showImportantOnly ? 'fill-current text-amber-500' : 'text-amber-500'}`} />
+                <span>{showImportantOnly ? 'Show All Messages' : 'Starred Messages'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setShowNotificationModal(true);
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Bell className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span>Notifications & Alerts</span>
+                </div>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setProfileModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <Avatar
+                  src={user?.avatar || user?.profileImage}
+                  name={user?.name || user?.fullName || 'User'}
+                  size="xs"
+                />
+                <span className="truncate">My Profile ({user?.name?.split(' ')[0] || 'Me'})</span>
+              </button>
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+
+              {/* Clear All Messages (For All Members) */}
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  setShowClearChatConfirmModal(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                <span>Clear All Messages</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -824,6 +979,42 @@ export const FamilyChatView: React.FC = () => {
               }}
             >
               {clearingNotifs ? 'Clearing...' : 'Clear All'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal to Clear All Chat Messages for Everyone */}
+      <Modal
+        isOpen={showClearChatConfirmModal}
+        onClose={() => setShowClearChatConfirmModal(false)}
+        title="Clear All Messages for Everyone?"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-800 dark:text-rose-300">
+            <strong>Warning:</strong> This will delete all chat messages in this family space for all members.
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Are you sure you want to clear message history? A system note will be posted indicating the chat was cleared. Other family records, bills, and medical items will remain intact.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowClearChatConfirmModal(false)}
+              disabled={clearingChat}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={clearingChat}
+              onClick={handleClearAllChatMessages}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              Clear Messages
             </Button>
           </div>
         </div>

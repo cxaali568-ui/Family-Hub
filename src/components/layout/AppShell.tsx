@@ -53,11 +53,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
     setCurrentRoute,
     urgentItems,
     familyPermissions,
+    mobileMenuOpen,
+    setMobileMenuOpen,
   } = useFamily();
   const { unreadCount, setIsOpen: setNotificationOpen } = useNotifications();
   const { t } = useLanguage();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [copiedQuickShare, setCopiedQuickShare] = useState(false);
@@ -293,61 +294,63 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
 
         {/* ---------------- Mobile Top Bar ---------------- */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="lg:hidden flex items-center justify-between px-3.5 h-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-20 shrink-0">
-            {/* Left: Menu Trigger & Single App Identity */}
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                aria-label="Open Navigation Menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-2 overflow-hidden">
-                <Avatar
-                  src={currentFamily?.photo || currentFamily?.avatar}
-                  name={currentFamily?.name || 'Khan House'}
-                  size="sm"
-                  className="ring-2 ring-amber-500/20 shrink-0"
-                />
-                <div className="overflow-hidden">
-                  <h1 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate max-w-[140px]">
-                    {currentFamily?.name || 'Khan House'}
-                  </h1>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate">
-                    Family Space
-                  </p>
+          {currentRoute !== 'chat' && (
+            <header className="lg:hidden flex items-center justify-between px-3.5 h-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-20 shrink-0">
+              {/* Left: Menu Trigger & Single App Identity */}
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                  aria-label="Open Navigation Menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Avatar
+                    src={currentFamily?.photo || currentFamily?.avatar}
+                    name={currentFamily?.name || 'Khan House'}
+                    size="sm"
+                    className="ring-2 ring-amber-500/20 shrink-0"
+                  />
+                  <div className="overflow-hidden">
+                    <h1 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 leading-tight truncate max-w-[140px]">
+                      {currentFamily?.name || 'Khan House'}
+                    </h1>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate">
+                      Family Space
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Right: Share + PWA + Notifications */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleQuickShareApp}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title={copiedQuickShare ? 'Link copied!' : 'Share FamilyHub App'}
-                aria-label="Share App Link"
-              >
-                {copiedQuickShare ? (
-                  <Check className="w-5 h-5 text-emerald-500" />
-                ) : (
-                  <Share2 className="w-5 h-5" />
-                )}
-              </button>
-              <PWAInstallPrompt variant="button" className="text-[11px] py-1 px-2" />
-              <button
-                onClick={() => setNotificationOpen(true)}
-                className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                aria-label="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
-                )}
-              </button>
-            </div>
-          </header>
+              {/* Right: Share + PWA + Notifications */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleQuickShareApp}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title={copiedQuickShare ? 'Link copied!' : 'Share FamilyHub App'}
+                  aria-label="Share App Link"
+                >
+                  {copiedQuickShare ? (
+                    <Check className="w-5 h-5 text-emerald-500" />
+                  ) : (
+                    <Share2 className="w-5 h-5" />
+                  )}
+                </button>
+                <PWAInstallPrompt variant="button" className="text-[11px] py-1 px-2" />
+                <button
+                  onClick={() => setNotificationOpen(true)}
+                  className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
+                  )}
+                </button>
+              </div>
+            </header>
+          )}
 
           {/* ---------------- Main Content View ---------------- */}
           {/* Enables native fluid scrolling on mobile with touch momentum and bottom padding */}

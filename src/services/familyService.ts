@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -559,6 +560,36 @@ class FamilyService {
         console.warn("Error listening to activity logs:", err);
       }
     );
+  }
+
+  /**
+   * Deletes a single activity log item
+   */
+  async deleteActivityLog(activityId: string): Promise<void> {
+    if (!activityId) return;
+    try {
+      await deleteDoc(doc(db, 'activityLogs', activityId));
+    } catch (err) {
+      console.warn("Could not delete activity log:", err);
+    }
+  }
+
+  /**
+   * Clears all activity logs for a family
+   */
+  async clearAllActivityLogs(familyId: string): Promise<void> {
+    if (!familyId) return;
+    try {
+      const q = query(
+        collection(db, 'activityLogs'),
+        where('familyId', '==', familyId)
+      );
+      const snap = await getDocs(q);
+      const promises = snap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(promises);
+    } catch (err) {
+      console.warn("Could not clear activity logs:", err);
+    }
   }
 
   /**

@@ -20,11 +20,11 @@ export const NotificationDrawer: React.FC = () => {
     deleteNotification,
     clearAllNotifications,
   } = useNotifications();
-  const { activityLogs } = useFamily();
+  const { activityLogs, deleteActivityLog, clearAllActivityLogs } = useFamily();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<'notifications' | 'activity'>('notifications');
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState<'notifications' | 'activity' | null>(null);
   const [clearing, setClearing] = useState(false);
 
   if (!isOpen) return null;
@@ -32,8 +32,12 @@ export const NotificationDrawer: React.FC = () => {
   const handleConfirmClearAll = async () => {
     setClearing(true);
     try {
-      await clearAllNotifications();
-      setShowClearConfirm(false);
+      if (showClearConfirm === 'activity') {
+        await clearAllActivityLogs();
+      } else {
+        await clearAllNotifications();
+      }
+      setShowClearConfirm(null);
     } finally {
       setClearing(false);
     }
@@ -119,10 +123,21 @@ export const NotificationDrawer: React.FC = () => {
                 </button>
               )}
               <button
-                onClick={() => setShowClearConfirm(true)}
+                onClick={() => setShowClearConfirm('notifications')}
                 className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
               >
                 Clear All
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'activity' && activityLogs.length > 0 && (
+            <div className="flex items-center gap-2 pb-1.5">
+              <button
+                onClick={() => setShowClearConfirm('activity')}
+                className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
+              >
+                Clear Feed
               </button>
             </div>
           )}
@@ -187,24 +202,46 @@ export const NotificationDrawer: React.FC = () => {
                 </div>
               ))
             )
+          ) : activityLogs.length === 0 ? (
+            <EmptyState
+              icon={<Activity className="w-7 h-7" />}
+              title="No activity recorded"
+              description="Recent member updates, bill additions, and family actions will appear here."
+            />
           ) : (
-            <div className="space-y-3">
-              {activityLogs.map(log => (
+            <div className="space-y-2.5">
+              {activityLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs"
+                  className="flex items-start justify-between gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs group"
                 >
-                  <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 shrink-0 mt-0.5">
-                    <Activity className="w-3.5 h-3.5" />
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
+                      <Activity className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-slate-800 dark:text-slate-200 leading-snug break-words">
+                        <strong>{log.actorName}</strong> {log.action}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {new Date(log.createdAt).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-800 dark:text-slate-200">
-                      <strong>{log.actorName}</strong> {log.action}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteActivityLog(log.id)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
+                    title="Delete activity record"
+                    aria-label="Delete activity item"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -214,21 +251,25 @@ export const NotificationDrawer: React.FC = () => {
 
       {/* Confirmation Modal */}
       <Modal
-        isOpen={showClearConfirm}
-        onClose={() => setShowClearConfirm(false)}
-        title="Clear All Notifications?"
-        subtitle="This will permanently clear your notification alerts history."
+        isOpen={Boolean(showClearConfirm)}
+        onClose={() => setShowClearConfirm(null)}
+        title={showClearConfirm === 'activity' ? "Clear Activity Feed?" : "Clear All Notifications?"}
+        subtitle={
+          showClearConfirm === 'activity'
+            ? "This will clear all recorded activity logs for your family space."
+            : "This will permanently clear your notification alerts history."
+        }
         maxWidth="sm"
       >
         <div className="space-y-4">
           <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300">
-            <strong>Note:</strong> Your family chat messages, bills, and medical records will remain completely intact. This only clears your personal notification alerts.
+            <strong>Note:</strong> Your family chat messages, bills, and medical records will remain completely intact.
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowClearConfirm(false)}
+              onClick={() => setShowClearConfirm(null)}
             >
               {t.common.cancel}
             </Button>
