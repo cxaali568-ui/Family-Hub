@@ -323,26 +323,14 @@ export const FamilyChatView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
-      {/* WhatsApp / Upwork Style Top Bar Header */}
+      {/* WhatsApp Style Top Bar Header */}
       <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-10 shrink-0 min-h-[56px]">
-        {/* Left: 3-line hamburger menu for mobile + Family Avatar & Name */}
-        <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-          {/* 3-line menu button on mobile so user can jump to any section */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden min-h-[44px] min-w-[44px] -ml-1 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-            aria-label="Open Navigation Menu"
-            title="Open Navigation Menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
-          {/* Family Avatar & Info (WhatsApp contact style) */}
-          <div
-            onClick={() => setShowMembersDrawer(true)}
-            className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-98 transition-all"
-            title="View Family Details & Members"
-          >
+        {/* Left: Family Avatar & Name (WhatsApp group contact style) */}
+        <div
+          onClick={() => setShowMembersDrawer(true)}
+          className="flex items-center gap-2.5 sm:gap-3 overflow-hidden cursor-pointer hover:opacity-90 active:scale-98 transition-all"
+          title="View Family Details & Members"
+        >
             <Avatar
               src={family?.photo || family?.avatar}
               name={family?.name || 'Family'}
@@ -372,7 +360,6 @@ export const FamilyChatView: React.FC = () => {
               </p>
             </div>
           </div>
-        </div>
 
         {/* Right: WhatsApp-style Search + 3-Dots Overflow Menu (plus desktop shortcuts) */}
         <div className="flex items-center gap-1 shrink-0 relative" ref={moreMenuRef}>
@@ -575,6 +562,17 @@ export const FamilyChatView: React.FC = () => {
               Clear
             </button>
           )}
+          <button
+            onClick={() => {
+              setIsSearching(false);
+              setSearchQuery('');
+            }}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            title="Close search"
+            aria-label="Close search"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
