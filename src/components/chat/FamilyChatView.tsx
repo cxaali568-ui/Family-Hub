@@ -10,6 +10,8 @@ import { MessageComposer } from './MessageComposer';
 import { PinnedBanner } from './PinnedBanner';
 import { MediaViewerModal } from './MediaViewerModal';
 import { UserProfileModal } from '../profile/UserProfileModal';
+import { PersonalChatView } from './PersonalChatView';
+import { personalChatService } from '../../services/personalChatService';
 import { Avatar } from '../ui/Avatar';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadingState } from '../ui/LoadingState';
@@ -61,6 +63,60 @@ export const FamilyChatView: React.FC = () => {
   const [showClearChatConfirmModal, setShowClearChatConfirmModal] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Tab mode: 'family' (Group Chat) or 'personal' (1:1 Private Chat)
+  const [chatMode, setChatMode] = useState<'family' | 'personal'>('family');
+  const [personalUnreadCount, setPersonalUnreadCount] = useState(0);
+  const [selectedPersonalChatId, setSelectedPersonalChatId] = useState<string | null>(null);
+
+  // Real-time subscription to unread counts across personal 1:1 chats for current user
+  useEffect(() => {
+    if (!family?.id || !user?.id) {
+      setPersonalUnreadCount(0);
+      return;
+    }
+    const unsub = personalChatService.subscribeUserPersonalChats(
+      family.id,
+      user.id,
+      (liveChats) => {
+        const total = liveChats.reduce((sum, c) => {
+          return sum + (c.unreadCounts?.[user.id] || 0);
+        }, 0);
+        setPersonalUnreadCount(total);
+      }
+    );
+    return () => unsub();
+  }, [family?.id, user?.id]);
+
+  // Handler to start or open a private 1:1 conversation with any family member
+  const handleStartPersonalChatWithMember = async (targetMember: {
+    userId?: string;
+    userName?: string;
+    userPhoto?: string;
+    userEmail?: string;
+    role?: string;
+  }) => {
+    if (!family?.id || !user || !targetMember.userId) return;
+    try {
+      const chat = await personalChatService.ensurePersonalChatExists({
+        familyId: family.id,
+        currentUser: user,
+        otherMember: {
+          id: targetMember.userId,
+          name: targetMember.userName || 'Family Member',
+          avatar: targetMember.userPhoto,
+          email: targetMember.userEmail,
+          role: targetMember.role,
+        },
+      });
+      setSelectedPersonalChatId(chat.id);
+      setChatMode('personal');
+      setShowMembersDrawer(false);
+      setMoreMenuOpen(false);
+    } catch (err: any) {
+      showError(err?.message || 'Could not open personal chat.');
+    }
+  };
 
   // Close 3-dots overflow menu on outside click
   useEffect(() => {
@@ -325,12 +381,22 @@ export const FamilyChatView: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* WhatsApp Style Top Bar Header */}
       <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-10 shrink-0 min-h-[56px]">
-        {/* Left: Family Avatar & Name (WhatsApp group contact style) */}
-        <div
-          onClick={() => setShowMembersDrawer(true)}
-          className="flex items-center gap-2.5 sm:gap-3 overflow-hidden cursor-pointer hover:opacity-90 active:scale-98 transition-all"
-          title="View Family Details & Members"
-        >
+        {/* Left: Mobile Menu + Family Avatar & Name (WhatsApp group contact style) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="lg:hidden min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            aria-label="Open Navigation Menu"
+            title="Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div
+            onClick={() => setShowMembersDrawer(true)}
+            className="flex items-center gap-2.5 sm:gap-3 overflow-hidden cursor-pointer hover:opacity-90 active:scale-98 transition-all"
+            title="View Family Details & Members"
+          >
             <Avatar
               src={family?.photo || family?.avatar}
               name={family?.name || 'Family'}
@@ -360,6 +426,7 @@ export const FamilyChatView: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
 
         {/* Right: WhatsApp-style Search + 3-Dots Overflow Menu (plus desktop shortcuts) */}
         <div className="flex items-center gap-1 shrink-0 relative" ref={moreMenuRef}>
@@ -467,6 +534,24 @@ export const FamilyChatView: React.FC = () => {
               <button
                 onClick={() => {
                   setMoreMenuOpen(false);
+                  setChatMode('personal');
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Personal 1:1 Chats</span>
+                </div>
+                {personalUnreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
+                    {personalUnreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
                   setShowMembersDrawer(true);
                 }}
                 className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors text-left cursor-pointer"
@@ -537,7 +622,51 @@ export const FamilyChatView: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar when active */}
+      {/* WhatsApp Sub-Tabs: Family Group vs Personal 1:1 */}
+      <div className="flex items-center border-b border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs shrink-0 px-2 sm:px-4">
+        <button
+          onClick={() => {
+            setChatMode('family');
+            setSelectedPersonalChatId(null);
+          }}
+          className={`flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+            chatMode === 'family'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/20 dark:bg-indigo-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Family Group</span>
+        </button>
+
+        <button
+          onClick={() => setChatMode('personal')}
+          className={`flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer relative ${
+            chatMode === 'personal'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/20 dark:bg-indigo-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>Personal 1:1</span>
+          {personalUnreadCount > 0 && (
+            <span className="min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs">
+              {personalUnreadCount > 9 ? '9+' : personalUnreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {chatMode === 'personal' ? (
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PersonalChatView
+            initialChatId={selectedPersonalChatId}
+            onUnreadCountChange={setPersonalUnreadCount}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Search Bar when active */}
       {isSearching && (
         <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 animate-in slide-in-from-top-2 duration-150 shrink-0">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
@@ -727,6 +856,8 @@ export const FamilyChatView: React.FC = () => {
           onCancelReply={() => setReplyingTo(null)}
         />
       )}
+        </>
+      )}
 
       {/* Full Screen Photo / Document Media Viewer */}
       {previewAttachment && (
@@ -792,6 +923,17 @@ export const FamilyChatView: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {!isMe && m.userId && (
+                    <button
+                      onClick={() => handleStartPersonalChatWithMember(m)}
+                      className="px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                      title={`Chat privately with ${m.userName || 'Member'}`}
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>Chat</span>
+                    </button>
+                  )}
                 </div>
               );
             })}

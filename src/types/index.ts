@@ -234,6 +234,45 @@ export interface ChatRoom {
   createdBy: string;
 }
 
+export interface PersonalChatParticipant {
+  id: string;
+  name: string;
+  avatar?: string;
+  email?: string;
+  role?: string;
+}
+
+export interface PersonalChat {
+  id: string;
+  familyId: string;
+  participantIds: string[]; // Exactly 2 user IDs
+  participantDetails: Record<string, PersonalChatParticipant>;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  lastMessageSenderId?: string;
+  lastMessageType?: 'text' | 'image' | 'voice' | 'file';
+  unreadCounts: Record<string, number>; // userId -> number
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalMessage {
+  id: string;
+  chatId: string;
+  familyId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  recipientId: string;
+  text: string;
+  type: 'text' | 'image' | 'voice' | 'file';
+  attachments?: Attachment[];
+  createdAt: string;
+  readAt?: string | null;
+  readBy: string[];
+  status: 'sent' | 'delivered' | 'read';
+}
+
 export interface ChatMember {
   id: string;
   chatRoomId: string;

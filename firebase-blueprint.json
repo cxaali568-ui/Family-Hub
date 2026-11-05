@@ -508,6 +508,40 @@
         "createdAt": { "type": "string", "description": "Creation timestamp" }
       },
       "required": ["id", "familyId", "userId", "photoId", "createdAt"]
+    },
+    "PersonalChat": {
+      "title": "PersonalChat",
+      "description": "Private 1:1 conversation between two family members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique deterministic chat ID" },
+        "familyId": { "type": "string", "description": "Associated family ID" },
+        "participantIds": { "type": "array", "description": "Exactly two user IDs", "items": { "type": "string" } },
+        "participantDetails": { "type": "object", "description": "Metadata for participants" },
+        "lastMessage": { "type": "string", "description": "Preview of last message" },
+        "lastMessageAt": { "type": "string", "description": "Timestamp of last message" },
+        "unreadCounts": { "type": "object", "description": "Unread count per user" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "familyId", "participantIds", "createdAt"]
+    },
+    "PersonalMessage": {
+      "title": "PersonalMessage",
+      "description": "Private message between two family members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Message ID" },
+        "chatId": { "type": "string", "description": "Personal chat ID" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "senderId": { "type": "string", "description": "Sender User ID" },
+        "senderName": { "type": "string", "description": "Sender display name" },
+        "recipientId": { "type": "string", "description": "Recipient User ID" },
+        "text": { "type": "string", "description": "Message text content" },
+        "type": { "type": "string", "description": "Type of message", "enum": ["text", "image", "voice", "file"] },
+        "createdAt": { "type": "string", "description": "Timestamp of message" },
+        "status": { "type": "string", "description": "Message status", "enum": ["sent", "delivered", "read"] }
+      },
+      "required": ["id", "chatId", "familyId", "senderId", "recipientId", "createdAt"]
     }
   },
   "firestore": {
@@ -630,6 +664,14 @@
     "/personalNotes/{noteId}": {
       "schema": "PersonalNote",
       "description": "Confidential private notes"
+    },
+    "/personalChats/{chatId}": {
+      "schema": "PersonalChat",
+      "description": "Private 1:1 chat between two family members"
+    },
+    "/personalChats/{chatId}/messages/{messageId}": {
+      "schema": "PersonalMessage",
+      "description": "Real-time messages in private 1:1 chat"
     }
   }
 }
