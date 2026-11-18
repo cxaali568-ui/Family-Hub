@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFamily } from '../../context/FamilyContext';
 import { usePersonal } from '../../context/PersonalContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useBackButtonClose, useClickOutside } from '../../hooks/useOverlayDismiss';
 import { Avatar } from '../ui/Avatar';
 import { NotificationDrawer } from '../notifications/NotificationDrawer';
 import { OfflineBanner } from '../ui/OfflineBanner';
@@ -62,6 +63,21 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
   const [familyDropdownOpen, setFamilyDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [copiedQuickShare, setCopiedQuickShare] = useState(false);
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useBackButtonClose(
+    mobileMenuOpen && !familyDropdownOpen && !profileModalOpen,
+    () => setMobileMenuOpen(false),
+    'mobile-nav'
+  );
+  useBackButtonClose(familyDropdownOpen, () => setFamilyDropdownOpen(false), 'family-switcher');
+  useBackButtonClose(profileModalOpen, () => setProfileModalOpen(false), 'user-profile');
+  useClickOutside(
+    [desktopDropdownRef, mobileDropdownRef],
+    familyDropdownOpen,
+    () => setFamilyDropdownOpen(false)
+  );
 
   const handleQuickShareApp = async () => {
     const url = typeof window !== 'undefined' ? window.location.origin : 'https://familyhub.app';
@@ -165,7 +181,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
         {/* ---------------- Desktop Sidebar ---------------- */}
         <aside className="hidden lg:flex flex-col w-68 bg-white dark:bg-slate-900 border-r border-slate-200/90 dark:border-slate-800/90 shrink-0 z-20">
           {/* Single App Identity Header at top of Menu */}
-          <div className="relative px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
+          <div ref={desktopDropdownRef} className="relative px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3 overflow-hidden">
                 <Avatar
@@ -431,7 +447,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onOpenOnboarding }
 
           <div className="relative w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
             {/* Single App Identity at the very top of Menu */}
-            <div className="relative p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+            <div ref={mobileDropdownRef} className="relative p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
               <div className="flex items-center gap-3 overflow-hidden">
                 <Avatar
                   src={currentFamily?.photo || currentFamily?.avatar}

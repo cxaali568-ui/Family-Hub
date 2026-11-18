@@ -12,8 +12,10 @@ import { ToastProvider } from './context/ToastContext';
 import { FamilyProvider, useFamily } from './context/FamilyContext';
 import { PersonalProvider } from './context/PersonalContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { CallProvider } from './context/CallContext';
 
 import { AppShell } from './components/layout/AppShell';
+import { CallOverlay } from './components/chat/CallOverlay';
 import { AuthView } from './components/auth/AuthView';
 import { OnboardingView } from './components/family/OnboardingView';
 import { FamilyChatView } from './components/chat/FamilyChatView';
@@ -95,9 +97,12 @@ const AuthenticatedFamilyRouter: React.FC = () => {
   return (
     <PersonalProvider>
       <NotificationProvider>
-        <AppShell onOpenOnboarding={() => setForceOnboarding(true)}>
-          <MainContent />
-        </AppShell>
+        <CallProvider>
+          <AppShell onOpenOnboarding={() => setForceOnboarding(true)}>
+            <MainContent />
+          </AppShell>
+          <CallOverlay />
+        </CallProvider>
       </NotificationProvider>
     </PersonalProvider>
   );

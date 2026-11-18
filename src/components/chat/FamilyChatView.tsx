@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useFamily } from '../../context/FamilyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
+import { useCall } from '../../context/CallContext';
+import { useBackButtonClose } from '../../hooks/useOverlayDismiss';
 import { chatService } from '../../services/chatService';
 import { personalChatService } from '../../services/personalChatService';
 import {
@@ -11,6 +13,7 @@ import {
   PersonalChat,
   ChatItemPreference,
   User,
+  CallParticipantInfo,
 } from '../../types';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
@@ -62,7 +65,8 @@ import {
   Camera,
   Film,
   ExternalLink,
-  Wand2,
+  BookOpen,
+  Video,
 } from 'lucide-react';
 
 type FilterTab = 'all' | 'unread' | 'favourites' | 'groups';
@@ -126,6 +130,7 @@ export const FamilyChatView: React.FC = () => {
   } = useFamily();
   const { t } = useLanguage();
   const { showError, showSuccess } = useToast();
+  const { startCall } = useCall();
 
   // Family Group Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -177,6 +182,42 @@ export const FamilyChatView: React.FC = () => {
   const [clearingPersonalChat, setClearingPersonalChat] = useState(false);
   const [removePersonalTargetChat, setRemovePersonalTargetChat] = useState<PersonalChat | null>(null);
   const [removingPersonalChat, setRemovingPersonalChat] = useState(false);
+
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobileViewport(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  useBackButtonClose(
+    isMobileViewport && mobileShowThread,
+    () => setMobileShowThread(false),
+    'mobile-chat-thread'
+  );
+  useBackButtonClose(showMembersDrawer, () => setShowMembersDrawer(false), 'family-members-drawer');
+  useBackButtonClose(sidebarMenuOpen, () => setSidebarMenuOpen(false), 'chat-sidebar-menu');
+  useBackButtonClose(moreMenuOpen, () => setMoreMenuOpen(false), 'family-thread-menu');
+  useBackButtonClose(Boolean(rowMenu), () => setRowMenu(null), 'chat-row-menu');
+  useBackButtonClose(
+    isSearching,
+    () => {
+      setIsSearching(false);
+      setSearchQuery('');
+    },
+    'family-chat-search'
+  );
+  useBackButtonClose(
+    showArchivedView && !(isMobileViewport && mobileShowThread),
+    () => setShowArchivedView(false),
+    'chat-archived-list'
+  );
 
   const chatRoomId = family?.id ? `${family.id}_general` : '';
   const [familyChatPrefs, setFamilyChatPrefs] = useState<ChatItemPreference>({});
@@ -1381,20 +1422,20 @@ export const FamilyChatView: React.FC = () => {
           )}
         </div>
 
-        {/* Bottom Bar: Trending Free Google AI Suite (ImageFX + Real Gemini + Google Flow) */}
+        {/* Bottom Bar: Trending Free Google AI Suite (NotebookLM + Real Gemini + Google Flow) */}
         <div className="px-2 py-1.5 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-around gap-1 shrink-0">
           <a
-            href="https://labs.google/fx/tools/image-fx"
+            href="https://notebooklm.google.com/"
             target="_blank"
             rel="noopener noreferrer"
-            title="Open Google ImageFX — Free AI Image Creator (labs.google/fx/tools/image-fx)"
+            title="Open Google NotebookLM — Free AI Notes, PDFs & Audio Overviews (notebooklm.google.com)"
             className="flex-1 flex flex-col items-center justify-center py-1 rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/70 dark:text-slate-300 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 font-semibold text-[11px] transition-colors cursor-pointer"
           >
             <div className="px-3 py-0.5 mb-0.5 relative flex items-center justify-center">
-              <Wand2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <ExternalLink className="w-2.5 h-2.5 absolute -top-0.5 -right-0.5 text-slate-400" />
             </div>
-            <span>ImageFX</span>
+            <span>NotebookLM</span>
           </a>
 
           <a
@@ -1522,13 +1563,103 @@ export const FamilyChatView: React.FC = () => {
               </div>
 
               {/* Right Thread Controls */}
-              <div className="flex items-center gap-1 shrink-0 relative" ref={moreMenuRef}>
+              <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 relative" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user || !family) return;
+                    const calleeIds = members
+                      .filter((m) => (m.userId || m.id) !== user.id && m.status !== 'removed')
+                      .map((m) => m.userId || m.id);
+                    if (calleeIds.length === 0) {
+                      showError('Invite family members first to start a group call.');
+                      return;
+                    }
+                    const participantDetails: Record<string, CallParticipantInfo> = {
+                      [user.id]: {
+                        id: user.id,
+                        name: user.name || user.fullName || 'You',
+                        avatar: user.avatar || user.profileImage || '',
+                      },
+                    };
+                    members.forEach((m) => {
+                      const mid = m.userId || m.id;
+                      if (mid) {
+                        participantDetails[mid] = {
+                          id: mid,
+                          name: m.userName || 'Member',
+                          avatar: m.userPhoto || '',
+                        };
+                      }
+                    });
+                    startCall({
+                      familyId: family.id,
+                      chatId: chatRoomId,
+                      chatName: family.name || 'Family Group',
+                      isGroup: true,
+                      type: 'audio',
+                      calleeIds,
+                      participantDetails,
+                    });
+                  }}
+                  className="min-h-[40px] min-w-[38px] sm:min-w-[40px] flex items-center justify-center rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors cursor-pointer"
+                  title="Start Family Voice Call"
+                  aria-label="Start family voice call"
+                >
+                  <Phone className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user || !family) return;
+                    const calleeIds = members
+                      .filter((m) => (m.userId || m.id) !== user.id && m.status !== 'removed')
+                      .map((m) => m.userId || m.id);
+                    if (calleeIds.length === 0) {
+                      showError('Invite family members first to start a group video call.');
+                      return;
+                    }
+                    const participantDetails: Record<string, CallParticipantInfo> = {
+                      [user.id]: {
+                        id: user.id,
+                        name: user.name || user.fullName || 'You',
+                        avatar: user.avatar || user.profileImage || '',
+                      },
+                    };
+                    members.forEach((m) => {
+                      const mid = m.userId || m.id;
+                      if (mid) {
+                        participantDetails[mid] = {
+                          id: mid,
+                          name: m.userName || 'Member',
+                          avatar: m.userPhoto || '',
+                        };
+                      }
+                    });
+                    startCall({
+                      familyId: family.id,
+                      chatId: chatRoomId,
+                      chatName: family.name || 'Family Group',
+                      isGroup: true,
+                      type: 'video',
+                      calleeIds,
+                      participantDetails,
+                    });
+                  }}
+                  className="min-h-[40px] min-w-[38px] sm:min-w-[40px] flex items-center justify-center rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer"
+                  title="Start Family Video Call"
+                  aria-label="Start family video call"
+                >
+                  <Video className="w-5 h-5" />
+                </button>
+
                 <button
                   onClick={() => {
                     setIsSearching(!isSearching);
                     if (isSearching) setSearchQuery('');
                   }}
-                  className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
+                  className={`min-h-[40px] min-w-[38px] sm:min-w-[40px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                     isSearching
                       ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'

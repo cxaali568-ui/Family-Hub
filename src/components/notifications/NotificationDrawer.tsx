@@ -8,6 +8,7 @@ import { Modal } from '../ui/Modal';
 import { EmptyState } from '../ui/EmptyState';
 import { Bell, Check, Clock, MessageSquare, AlertTriangle, DollarSign, Activity, X, Trash2 } from 'lucide-react';
 import { NotificationType } from '../../types';
+import { useBackButtonClose } from '../../hooks/useOverlayDismiss';
 
 export const NotificationDrawer: React.FC = () => {
   const {
@@ -26,6 +27,8 @@ export const NotificationDrawer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'notifications' | 'activity'>('notifications');
   const [showClearConfirm, setShowClearConfirm] = useState<'notifications' | 'activity' | null>(null);
   const [clearing, setClearing] = useState(false);
+
+  useBackButtonClose(isOpen && !showClearConfirm, () => setIsOpen(false), 'notif-drawer');
 
   if (!isOpen) return null;
 

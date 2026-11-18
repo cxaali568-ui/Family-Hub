@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { formatMessageTimestamp } from '../../utils/dateUtils';
 import { StickerBubbleCard } from './StickerBubbleCard';
 import { aiService } from '../../services/aiService';
+import { useBackButtonClose, useClickOutside } from '../../hooks/useOverlayDismiss';
 import {
   Reply,
   Pin,
@@ -184,7 +185,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const bubbleRootRef = useRef<HTMLDivElement>(null);
   const { showError } = useToast();
+
+  useClickOutside(
+    bubbleRootRef,
+    showActionsMenu || showEmojiPicker,
+    () => {
+      setShowActionsMenu(false);
+      setShowEmojiPicker(false);
+    }
+  );
+  useBackButtonClose(showActionsMenu, () => setShowActionsMenu(false), 'msg-actions');
+  useBackButtonClose(showEmojiPicker, () => setShowEmojiPicker(false), 'msg-emoji');
+  useBackButtonClose(
+    isEditing,
+    () => {
+      setEditText(message.text);
+      setIsEditing(false);
+    },
+    'msg-edit'
+  );
 
   const isDeleted = Boolean(message.deletedAt);
   const hasReactions = message.reactions && Object.keys(message.reactions).length > 0;
@@ -291,6 +312,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div
+      ref={bubbleRootRef}
       className={`group relative flex flex-col ${
         isFirstInGroup ? 'mt-3 mb-1' : 'my-0.5'
       } ${isCurrentUser ? 'items-end' : 'items-start'}`}

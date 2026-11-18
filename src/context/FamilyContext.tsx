@@ -16,6 +16,7 @@ import {
 import { familyService } from '../services/familyService';
 import { noteService } from '../services/noteService';
 import { useAuth } from './AuthContext';
+import { wasPopStateConsumedByOverlay } from '../hooks/useOverlayDismiss';
 
 export interface FamilyPermissions {
   isOwner: boolean;
@@ -175,6 +176,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentRoute, setCurrentRouteState] = useState<FamilyNavRoute>(parseCurrentPath);
 
   const setCurrentRoute = (route: FamilyNavRoute) => {
+    setMobileMenuOpen(false);
     setCurrentRouteState(route);
     try {
       if (route === 'expenses') {
@@ -191,6 +193,8 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     const handlePopState = () => {
+      if (wasPopStateConsumedByOverlay()) return;
+      setMobileMenuOpen(false);
       setCurrentRouteState(parseCurrentPath());
     };
     window.addEventListener('popstate', handlePopState);

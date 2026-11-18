@@ -688,6 +688,73 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
+    // --- Real-Time Audio / Video Calls (WebRTC Signaling) ---
+    match /calls/{callId} {
+      function isCallParticipant(data) {
+        return isAuthenticated() && (
+          data.callerId == request.auth.uid ||
+          (data.calleeIds is list && request.auth.uid in data.calleeIds) ||
+          (data.activeParticipantIds is list && request.auth.uid in data.activeParticipantIds)
+        );
+      }
+
+      allow get: if isAuthenticated() && (
+        resource == null ||
+        isCallParticipant(resource.data) ||
+        (resource.data.familyId != null && resource.data.familyId != 'direct' && isFamilyMember(resource.data.familyId))
+      );
+
+      allow list: if isAuthenticated() && (
+        resource.data.callerId == request.auth.uid ||
+        (resource.data.calleeIds is list && request.auth.uid in resource.data.calleeIds)
+      );
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.callerId == request.auth.uid &&
+        request.resource.data.id == callId &&
+        request.resource.data.calleeIds is list &&
+        request.resource.data.calleeIds.size() <= 50 &&
+        request.resource.data.status in ['ringing', 'active'];
+
+      allow update: if isAuthenticated() && (
+        isCallParticipant(resource.data) ||
+        (resource.data.familyId != null && resource.data.familyId != 'direct' && isFamilyMember(resource.data.familyId))
+      ) &&
+        request.resource.data.callerId == resource.data.callerId &&
+        request.resource.data.id == resource.data.id;
+
+      allow delete: if isAuthenticated() && (
+        resource.data.callerId == request.auth.uid ||
+        (resource.data.familyId != null && resource.data.familyId != 'direct' && isFamilyAdminOrOwner(resource.data.familyId))
+      );
+
+      match /candidates/{candidateId} {
+        allow read, create, update, delete: if isAuthenticated() && (
+          get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.calleeIds ||
+          (
+            get(/databases/$(database)/documents/calls/$(callId)).data.familyId != null &&
+            get(/databases/$(database)/documents/calls/$(callId)).data.familyId != 'direct' &&
+            isFamilyMember(get(/databases/$(database)/documents/calls/$(callId)).data.familyId)
+          )
+        );
+      }
+
+      match /peers/{peerId} {
+        allow read, create, update, delete: if isAuthenticated() && (
+          get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.calleeIds
+        );
+
+        match /candidates/{candidateId} {
+          allow read, create, update, delete: if isAuthenticated() && (
+            get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.calleeIds
+          );
+        }
+      }
+    }
+
     // --- Test connection document ---
     match /test/{docId} {
       allow read: if isAuthenticated();

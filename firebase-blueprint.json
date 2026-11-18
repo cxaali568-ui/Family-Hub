@@ -542,6 +542,25 @@
         "status": { "type": "string", "description": "Message status", "enum": ["sent", "delivered", "read"] }
       },
       "required": ["id", "chatId", "familyId", "senderId", "recipientId", "createdAt"]
+    },
+    "CallSession": {
+      "title": "CallSession",
+      "description": "Real-time WebRTC audio/video call signaling and live reactions/captions session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique call session ID" },
+        "familyId": { "type": "string", "description": "Associated family ID" },
+        "chatId": { "type": "string", "description": "Associated chat ID" },
+        "chatName": { "type": "string", "description": "Conversation title" },
+        "isGroup": { "type": "boolean", "description": "Whether call is a group call" },
+        "type": { "type": "string", "description": "Call media type", "enum": ["audio", "video"] },
+        "callerId": { "type": "string", "description": "Caller user UID" },
+        "callerName": { "type": "string", "description": "Caller display name" },
+        "status": { "type": "string", "description": "Call status", "enum": ["ringing", "active", "ended", "declined", "missed"] },
+        "createdAt": { "type": "string", "description": "Creation ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update ISO timestamp" }
+      },
+      "required": ["id", "familyId", "chatId", "type", "callerId", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -672,6 +691,10 @@
     "/personalChats/{chatId}/messages/{messageId}": {
       "schema": "PersonalMessage",
       "description": "Real-time messages in private 1:1 chat"
+    },
+    "/calls/{callId}": {
+      "schema": "CallSession",
+      "description": "Real-time audio/video WebRTC call signaling"
     }
   }
 }

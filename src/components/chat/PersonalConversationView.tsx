@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useCall } from '../../context/CallContext';
+import { useBackButtonClose, useClickOutside } from '../../hooks/useOverlayDismiss';
 import { personalChatService } from '../../services/personalChatService';
-import { PersonalChat, PersonalMessage, Attachment } from '../../types';
+import { PersonalChat, PersonalMessage, Attachment, CallParticipantInfo } from '../../types';
 import { Avatar } from '../ui/Avatar';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -37,6 +39,7 @@ import {
   Languages,
   Volume2,
   Video,
+  Phone,
 } from 'lucide-react';
 
 interface PersonalConversationViewProps {
@@ -152,6 +155,7 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
 }) => {
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
+  const { startCall } = useCall();
 
   const [messages, setMessages] = useState<PersonalMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -209,6 +213,35 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<any>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(
+    composerWrapperRef,
+    showTray || showAIMagic,
+    () => {
+      setShowTray(false);
+      setShowAIMagic(false);
+    }
+  );
+  useBackButtonClose(showTray, () => setShowTray(false), 'personal-tray');
+  useBackButtonClose(showAIMagic, () => setShowAIMagic(false), 'personal-ai');
+  useBackButtonClose(moreMenuOpen, () => setMoreMenuOpen(false), 'personal-more');
+  useBackButtonClose(
+    Boolean(activeActionMsgId),
+    () => {
+      setConfirmDeleteMsgId(null);
+      setActiveActionMsgId(null);
+    },
+    'personal-msg-action'
+  );
+  useBackButtonClose(
+    Boolean(editingMsgId),
+    () => {
+      setEditingMsgId(null);
+      setEditValue('');
+    },
+    'personal-msg-edit'
+  );
 
   const speechSupported =
     typeof window !== 'undefined' &&
@@ -786,6 +819,40 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
     }
   };
 
+  const handleStartCall = (callType: 'audio' | 'video') => {
+    if (!user) return;
+    const calleeIds = chat.participantIds.filter((id) => id !== user.id);
+    if (calleeIds.length === 0) {
+      showError('No other participant in this chat to call.');
+      return;
+    }
+
+    const participantDetails: Record<string, CallParticipantInfo> = {
+      [user.id]: {
+        id: user.id,
+        name: user.name || user.fullName || 'You',
+        avatar: user.avatar || user.profileImage || '',
+      },
+    };
+    Object.entries(chat.participantDetails || {}).forEach(([pid, info]) => {
+      participantDetails[pid] = {
+        id: pid,
+        name: info?.name || 'Member',
+        avatar: info?.avatar || '',
+      };
+    });
+
+    startCall({
+      familyId: chat.familyId || 'direct',
+      chatId: chat.id,
+      chatName: headerTitle,
+      isGroup,
+      type: callType,
+      calleeIds,
+      participantDetails,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Top Header */}
@@ -847,11 +914,31 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
           </div>
         </div>
 
-        {/* Right Overflow Menu */}
-        <div className="flex items-center gap-1 shrink-0 relative" ref={moreMenuRef}>
+        {/* Right Call & Overflow Controls */}
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 relative" ref={moreMenuRef}>
+          <button
+            type="button"
+            onClick={() => handleStartCall('audio')}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors cursor-pointer"
+            title={`Voice call ${headerTitle}`}
+            aria-label="Start voice call"
+          >
+            <Phone className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStartCall('video')}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer"
+            title={`Video call ${headerTitle}`}
+            aria-label="Start video call"
+          >
+            <Video className="w-5 h-5" />
+          </button>
+
           <button
             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="Options"
             aria-label="Conversation Options"
           >
@@ -906,7 +993,15 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
       </div>
 
       {/* Messages Stream */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-3 touch-scroll">
+      <div
+        onClick={() => {
+          if (activeActionMsgId) {
+            setActiveActionMsgId(null);
+            setConfirmDeleteMsgId(null);
+          }
+        }}
+        className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-3 touch-scroll"
+      >
         {loadingMessages ? (
           <div className="py-12 text-center text-xs text-slate-400">
             <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -1132,7 +1227,10 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
 
                 {/* Clean Inline Action Bar (Copy / Translate / Listen / Edit / Delete) */}
                 {isActionOpen && !isEditing && (
-                  <div className="mt-1 flex flex-wrap items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg z-20 animate-in fade-in duration-100">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 flex flex-wrap items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg z-20 animate-in fade-in duration-100"
+                  >
                     {!isDeleteConfirmOpen ? (
                       <>
                         {msg.text && (
@@ -1251,7 +1349,10 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
       </div>
 
       {/* Message Composer Matching User Screenshot */}
-      <div className="bg-slate-100/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shrink-0">
+      <div
+        ref={composerWrapperRef}
+        className="bg-slate-100/90 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shrink-0"
+      >
         <div className="p-2.5 sm:p-3">
           {showAIMagic && (
             <AIChatMagicPopover
@@ -1376,7 +1477,16 @@ export const PersonalConversationView: React.FC<PersonalConversationViewProps> =
                   value={text}
                   onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
-                  onFocus={() => setShowAIMagic(false)}
+                  onFocus={() => {
+                    setShowAIMagic(false);
+                    setShowTray(false);
+                    setActiveActionMsgId(null);
+                  }}
+                  onClick={() => {
+                    setShowAIMagic(false);
+                    setShowTray(false);
+                    setActiveActionMsgId(null);
+                  }}
                   placeholder="Message"
                   className="flex-1 min-w-0 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 text-sm py-1.5 px-1 resize-none max-h-32 min-h-[38px] leading-snug"
                 />

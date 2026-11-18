@@ -19,6 +19,7 @@ import { chatService } from '../../services/chatService';
 import { StickerEmojiTray } from './StickerEmojiTray';
 import { AIChatMagicPopover } from './AIChatMagicPopover';
 import { CameraShareModal } from './CameraShareModal';
+import { useBackButtonClose, useClickOutside } from '../../hooks/useOverlayDismiss';
 
 interface MessageComposerProps {
   chatRoomId: string;
@@ -64,9 +65,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
 
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<any>(null);
+
+  useClickOutside(
+    composerWrapperRef,
+    showTray || showAIMagic,
+    () => {
+      setShowTray(false);
+      setShowAIMagic(false);
+    }
+  );
+  useBackButtonClose(showTray, () => setShowTray(false), 'chat-tray');
+  useBackButtonClose(showAIMagic, () => setShowAIMagic(false), 'chat-ai');
 
   const speechSupported =
     typeof window !== 'undefined' &&
@@ -401,7 +414,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   };
 
   return (
-    <div className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-900/95 backdrop-blur-md shrink-0 relative">
+    <div
+      ref={composerWrapperRef}
+      className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-900/95 backdrop-blur-md shrink-0 relative"
+    >
       <div className="p-2.5 sm:p-3">
         {/* Reply Quote Banner */}
         {replyingTo && (
@@ -570,7 +586,14 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
-                onFocus={() => setShowAIMagic(false)}
+                onFocus={() => {
+                  setShowAIMagic(false);
+                  setShowTray(false);
+                }}
+                onClick={() => {
+                  setShowAIMagic(false);
+                  setShowTray(false);
+                }}
                 placeholder="Message"
                 className="flex-1 min-w-0 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 text-sm py-1.5 px-1 resize-none max-h-32 min-h-[38px] leading-snug"
               />

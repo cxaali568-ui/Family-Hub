@@ -1521,6 +1521,61 @@ export interface AISettings {
   saveHistory: boolean;
 }
 
+export type CallType = 'audio' | 'video';
+export type CallStatus = 'ringing' | 'active' | 'ended' | 'declined' | 'missed';
+
+export interface CallParticipantInfo {
+  id: string;
+  name: string;
+  avatar?: string;
+  muted?: boolean;
+  videoOff?: boolean;
+  screenSharing?: boolean;
+  joinedAt?: string;
+}
+
+export interface CallReaction {
+  id: string;
+  emoji: string;
+  label?: string;
+  senderId: string;
+  senderName: string;
+  createdAt: number;
+}
+
+export interface CallCaption {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  translatedText?: string;
+  createdAt: number;
+}
+
+export interface CallSession {
+  id: string;
+  familyId: string;
+  chatId: string;
+  chatName: string;
+  isGroup: boolean;
+  type: CallType;
+  callerId: string;
+  callerName: string;
+  callerAvatar?: string;
+  calleeIds: string[];
+  activeParticipantIds: string[];
+  participantDetails: Record<string, CallParticipantInfo>;
+  status: CallStatus;
+  offer?: { type: string; sdp: string };
+  answer?: { type: string; sdp: string };
+  latestReaction?: CallReaction;
+  latestCaption?: CallCaption;
+  createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  updatedAt: string;
+}
+
 // Navigation structure
 export type FamilyNavRoute =
   | 'chat'

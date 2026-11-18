@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useBackButtonClose } from '../../hooks/useOverlayDismiss';
 
 interface ModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md',
 }) => {
+  useBackButtonClose(isOpen, onClose, 'modal');
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
