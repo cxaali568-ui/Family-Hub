@@ -11,7 +11,9 @@ export interface User {
   name: string; // Display name
   fullName?: string;
   email: string;
+  emailLower?: string;
   phone?: string;
+  phoneNormalized?: string;
   avatar?: string;
   profileImage?: string;
   roleInFamily?: Role;
@@ -187,13 +189,23 @@ export interface FamilyInvite {
   createdAt: string;
 }
 
+export interface StickerMeta {
+  emoji?: string;
+  caption?: string;
+  bgGradient?: string;
+  textColor?: string;
+  animation?: 'bounce' | 'pulse' | 'wiggle' | 'float' | 'none';
+  pack?: string;
+}
+
 export interface Attachment {
   id: string;
   fileName: string;
-  fileType: 'image' | 'document' | 'audio' | 'receipt';
+  fileType: 'image' | 'video' | 'document' | 'audio' | 'receipt' | 'sticker';
   fileSize: number; // in bytes
   url: string;
   previewUrl?: string;
+  stickerMeta?: StickerMeta;
 }
 
 export interface Reaction {
@@ -212,6 +224,7 @@ export interface Message {
   updatedAt?: string;
   editedAt?: string;
   deletedAt?: string;
+  deletedFor?: string[]; // userIds who deleted this message for themselves
   replyTo?: {
     id: string;
     senderName: string;
@@ -242,11 +255,25 @@ export interface PersonalChatParticipant {
   role?: string;
 }
 
+export interface ChatItemPreference {
+  isPinned?: boolean;
+  isArchived?: boolean;
+  isMuted?: boolean;
+  isFavourite?: boolean;
+  markedUnread?: boolean;
+}
+
 export interface PersonalChat {
   id: string;
   familyId: string;
-  participantIds: string[]; // Exactly 2 user IDs
+  isGroup?: boolean;
+  isDirectExternal?: boolean;
+  groupName?: string;
+  createdBy?: string;
+  participantIds: string[]; // 2 user IDs for 1:1, or 2+ user IDs for private group
   participantDetails: Record<string, PersonalChatParticipant>;
+  clearedAtByUser?: Record<string, string>; // userId -> ISO timestamp when user cleared chat for themselves
+  chatPreferences?: Record<string, ChatItemPreference>; // per-user WhatsApp preferences (pin, archive, mute, fav, unread)
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: string;
@@ -268,6 +295,9 @@ export interface PersonalMessage {
   type: 'text' | 'image' | 'voice' | 'file';
   attachments?: Attachment[];
   createdAt: string;
+  editedAt?: string;
+  deletedAt?: string;
+  deletedFor?: string[]; // userIds who deleted this message for themselves
   readAt?: string | null;
   readBy: string[];
   status: 'sent' | 'delivered' | 'read';

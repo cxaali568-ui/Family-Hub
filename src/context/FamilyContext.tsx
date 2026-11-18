@@ -71,15 +71,80 @@ interface FamilyContextType {
 
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
 
+const readCachedFamilies = (
+  userId?: string
+): Array<{ family: Family; membership: FamilyMember }> => {
+  if (!userId) return [];
+  try {
+    const raw = localStorage.getItem(`familyhub_cached_families_${userId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedFamilies = (
+  userId: string,
+  families: Array<{ family: Family; membership: FamilyMember }>
+) => {
+  try {
+    localStorage.setItem(`familyhub_cached_families_${userId}`, JSON.stringify(families));
+  } catch {}
+};
+
+const readCachedMembers = (familyId?: string): FamilyMember[] => {
+  if (!familyId) return [];
+  try {
+    const raw = localStorage.getItem(`familyhub_cached_members_${familyId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const resolveInitialFamilyState = (userId?: string) => {
+  const families = readCachedFamilies(userId);
+  if (families.length === 0) {
+    return {
+      families: [] as Array<{ family: Family; membership: FamilyMember }>,
+      currentFamily: null as Family | null,
+      membership: null as FamilyMember | null,
+      members: [] as FamilyMember[],
+      hasCache: false,
+    };
+  }
+  let savedFamilyId: string | null = null;
+  try {
+    savedFamilyId = userId ? localStorage.getItem(`familyhub_active_family_${userId}`) : null;
+  } catch {}
+  const found = families.find((f) => f.family.id === savedFamilyId) || families[0];
+  return {
+    families,
+    currentFamily: found.family,
+    membership: found.membership,
+    members: readCachedMembers(found.family.id),
+    hasCache: true,
+  };
+};
+
 export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const initialSnapshot = resolveInitialFamilyState(user?.id);
 
-  const [userFamilies, setUserFamilies] = useState<Array<{ family: Family; membership: FamilyMember }>>([]);
-  const [currentFamily, setCurrentFamily] = useState<Family | null>(null);
-  const [familyMembership, setFamilyMembership] = useState<FamilyMember | null>(null);
-  const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [userFamilies, setUserFamilies] = useState<Array<{ family: Family; membership: FamilyMember }>>(
+    () => initialSnapshot.families
+  );
+  const [currentFamily, setCurrentFamily] = useState<Family | null>(() => initialSnapshot.currentFamily);
+  const [familyMembership, setFamilyMembership] = useState<FamilyMember | null>(
+    () => initialSnapshot.membership
+  );
+  const [members, setMembers] = useState<FamilyMember[]>(() => initialSnapshot.members);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [loadingFamilies, setLoadingFamilies] = useState<boolean>(true);
+  const [loadingFamilies, setLoadingFamilies] = useState<boolean>(() => !initialSnapshot.hasCache);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const parseCurrentPath = (): FamilyNavRoute => {
@@ -140,7 +205,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [plans, setPlans] = useState<FamilyPlan[]>([]);
   const [notes, setNotes] = useState<FamilyNote[]>([]);
 
-  // Load user families from Firestore on user sign in or change
+  // Load user families from Firestore on user sign in or change (silently if cache is already shown)
   const refreshFamilyData = async () => {
     if (!user) {
       setUserFamilies([]);
@@ -151,10 +216,15 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    setLoadingFamilies(true);
+    const cached = readCachedFamilies(user.id);
+    if (cached.length === 0 && !currentFamily) {
+      setLoadingFamilies(true);
+    }
+
     try {
       const families = await familyService.getUserFamilies(user.id);
       setUserFamilies(families);
+      writeCachedFamilies(user.id, families);
 
       if (families.length > 0) {
         // Retain current family if still in list, else default to first
@@ -187,10 +257,18 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
+    const cachedMem = readCachedMembers(currentFamily.id);
+    if (cachedMem.length > 0 && members.length === 0) {
+      setMembers(cachedMem);
+    }
+
     const unsubMembers = familyService.subscribeFamilyMembers(
       currentFamily.id,
       (liveMembers) => {
         setMembers(liveMembers);
+        try {
+          localStorage.setItem(`familyhub_cached_members_${currentFamily.id}`, JSON.stringify(liveMembers));
+        } catch {}
         // Sync current membership role if updated
         if (user) {
           const myMem = liveMembers.find(m => m.userId === user.id);

@@ -3,6 +3,8 @@ import { Message, Attachment } from '../../types';
 import { Avatar } from '../ui/Avatar';
 import { useToast } from '../../context/ToastContext';
 import { formatMessageTimestamp } from '../../utils/dateUtils';
+import { StickerBubbleCard } from './StickerBubbleCard';
+import { aiService } from '../../services/aiService';
 import {
   Reply,
   Pin,
@@ -18,6 +20,10 @@ import {
   Eye,
   Play,
   Pause,
+  MoreHorizontal,
+  Languages,
+  Volume2,
+  Loader2,
 } from 'lucide-react';
 
 const VoiceMessagePlayer: React.FC<{ url: string; fileName: string; isCurrentUser: boolean }> = ({
@@ -139,11 +145,13 @@ interface MessageBubbleProps {
   onTogglePin: (messageId: string, currentlyPinned: boolean) => void;
   onEditMessage: (messageId: string, newText: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
+  onDeleteMessageForMe?: (messageId: string) => Promise<void>;
   onPreviewAttachment: (att: Attachment) => void;
   isImportant?: boolean;
   onToggleImportant?: (messageId: string) => void;
   currentUserId: string;
   canPin?: boolean;
+  canDeleteForEveryone?: boolean;
 }
 
 const COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -157,23 +165,82 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onTogglePin,
   onEditMessage,
   onDeleteMessage,
+  onDeleteMessageForMe,
   onPreviewAttachment,
   isImportant = false,
   onToggleImportant,
   currentUserId,
   canPin = true,
+  canDeleteForEveryone = false,
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   const [editLoading, setEditLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const { showError } = useToast();
 
   const isDeleted = Boolean(message.deletedAt);
   const hasReactions = message.reactions && Object.keys(message.reactions).length > 0;
+  const isPureSticker =
+    !isDeleted &&
+    !isEditing &&
+    !message.text.trim() &&
+    message.attachments?.length === 1 &&
+    message.attachments[0].fileType === 'sticker';
+
+  const handleTranslateMessage = async () => {
+    if (!message.text.trim()) return;
+    if (translatedText) {
+      setTranslatedText(null);
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await aiService.sendMessage(
+        [],
+        `Detect the language of this chat message and translate it cleanly (if Urdu/Roman Urdu/Hindi/Arabic -> translate to English; if English -> translate to natural Roman Urdu + Urdu): "${message.text}"`,
+        {
+          systemInstruction:
+            'You are a concise family chat translator. Output only the translated text clearly with no filler.',
+        }
+      );
+      setTranslatedText((res.reply || '').trim());
+    } catch (err: any) {
+      showError(err?.message || 'Translation unavailable right now.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleSpeakMessage = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window) || !message.text.trim()) {
+      showError('Voice read-aloud is not supported on this browser.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message.text);
+      utterance.rate = 0.98;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setIsSpeaking(false);
+    }
+  };
 
   const handleSaveEdit = async () => {
     if (!editText.trim() || editText.trim() === message.text) {
@@ -191,13 +258,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeleteForEveryone = async () => {
     setDeleteLoading(true);
     try {
       await onDeleteMessage(message.id);
       setShowDeleteConfirm(false);
     } catch (err: any) {
       showError(err?.message || 'Failed to delete message.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleConfirmDeleteForMe = async () => {
+    if (!onDeleteMessageForMe) return;
+    setDeleteLoading(true);
+    try {
+      await onDeleteMessageForMe(message.id);
+      setShowDeleteConfirm(false);
+    } catch (err: any) {
+      showError(err?.message || 'Failed to delete message for you.');
     } finally {
       setDeleteLoading(false);
     }
@@ -272,25 +352,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
           {/* Core Bubble */}
           <div
-            className={`relative px-4 py-2.5 rounded-2xl shadow-xs transition-shadow ${
-              isDeleted
-                ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 italic border border-dashed border-slate-200 dark:border-slate-800'
+            className={`relative rounded-2xl transition-all ${
+              isEditing
+                ? 'w-[88vw] sm:w-full min-w-[280px] sm:min-w-[500px] max-w-2xl p-4 bg-white dark:bg-slate-900 border-2 border-indigo-500 shadow-2xl'
+                : isDeleted
+                ? 'px-4 py-2.5 bg-slate-100 dark:bg-slate-800/50 text-slate-400 italic border border-dashed border-slate-200 dark:border-slate-800 shadow-xs'
+                : isPureSticker
+                ? 'p-1 bg-transparent'
                 : isCurrentUser
-                ? 'bg-indigo-600 text-white rounded-tr-xs'
-                : 'bg-white dark:bg-slate-800/95 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs'
+                ? 'px-4 py-2.5 bg-indigo-600 text-white rounded-tr-xs shadow-xs'
+                : 'px-4 py-2.5 bg-white dark:bg-slate-800/95 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs shadow-xs'
             }`}
           >
             {/* Attachments rendering */}
             {!isDeleted && message.attachments && message.attachments.length > 0 && (
-              <div className="mb-2 space-y-2">
+              <div className={`${isPureSticker ? 'mb-0.5' : 'mb-2'} space-y-2`}>
                 {message.attachments.map((att) => (
                   <div key={att.id} className="overflow-hidden rounded-xl">
-                    {att.fileType === 'audio' ? (
+                    {att.fileType === 'sticker' ? (
+                      <StickerBubbleCard attachment={att} />
+                    ) : att.fileType === 'audio' ? (
                       <VoiceMessagePlayer
                         url={att.url}
                         fileName={att.fileName}
                         isCurrentUser={isCurrentUser}
                       />
+                    ) : att.fileType === 'video' ? (
+                      <div className="relative overflow-hidden rounded-xl bg-black">
+                        <video
+                          src={att.url}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="max-h-64 w-full rounded-xl"
+                        />
+                      </div>
                     ) : att.fileType === 'image' ? (
                       <div
                         onClick={() => onPreviewAttachment(att)}
@@ -331,42 +427,92 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             )}
 
-            {/* Inline Edit Form */}
+            {/* Inline Edit Form - Simple, Large, Auto-Expanding */}
             {isEditing ? (
-              <div className="space-y-2 min-w-[220px]">
+              <div className="w-full space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Edit2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>Edit Message</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {editText.length} characters
+                  </span>
+                </div>
+
                 <textarea
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = `${Math.max(el.scrollHeight, 130)}px`;
+                    }
+                  }}
                   value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
-                  rows={2}
+                  onChange={(e) => {
+                    setEditText(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${Math.max(e.target.scrollHeight, 130)}px`;
+                  }}
+                  className="w-full text-sm sm:text-base p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed resize-y min-h-[130px] font-sans"
+                  placeholder="Edit your message..."
                   autoFocus
                 />
-                <div className="flex items-center justify-end gap-1.5 text-xs">
+
+                <div className="flex items-center justify-end gap-2 pt-1">
                   <button
-                    onClick={() => setIsEditing(false)}
-                    className="px-2 py-1 rounded text-slate-300 hover:text-white"
+                    type="button"
+                    onClick={() => {
+                      setEditText(message.text);
+                      setIsEditing(false);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={handleSaveEdit}
-                    disabled={editLoading}
-                    className="px-2.5 py-1 rounded bg-white text-indigo-700 font-bold hover:bg-indigo-50 disabled:opacity-50"
+                    disabled={editLoading || !editText.trim()}
+                    className="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-40 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    {editLoading ? 'Saving...' : 'Save'}
+                    <Check className="w-4 h-4" />
+                    <span>{editLoading ? 'Saving...' : 'Save Changes'}</span>
                   </button>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm leading-relaxed whitespace-pre-wrap select-text break-words">
-                {message.text}
-              </p>
-            )}
+            ) : message.text ? (
+              <>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap select-text break-words">
+                  {message.text}
+                </p>
+                {translating && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px] opacity-80">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Translating...</span>
+                  </div>
+                )}
+                {translatedText && (
+                  <div
+                    className={`mt-1.5 pt-1.5 border-t text-xs leading-relaxed ${
+                      isCurrentUser
+                        ? 'border-indigo-400/40 text-indigo-100'
+                        : 'border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300'
+                    }`}
+                  >
+                    {translatedText}
+                  </div>
+                )}
+              </>
+            ) : null}
 
             {/* Bubble Meta (Timestamp, edited indicator, star) */}
             <div
               className={`flex items-center justify-end gap-1.5 mt-1 text-[10px] ${
-                isCurrentUser ? 'text-indigo-200' : 'text-slate-400'
+                isPureSticker
+                  ? 'px-2 py-0.5 rounded-full bg-white/85 dark:bg-slate-800/85 text-slate-500 shadow-2xs w-fit ml-auto'
+                  : isCurrentUser
+                  ? 'text-indigo-200'
+                  : 'text-slate-400'
               }`}
             >
               {message.editedAt && !isDeleted && (
@@ -386,28 +532,67 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               )}
 
               <span>{formatMessageTimestamp(message.createdAt)}</span>
+
+              {/* WhatsApp-style 3-Dots Action Trigger */}
+              {!isDeleted ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowActionsMenu((prev) => !prev);
+                  }}
+                  className="opacity-60 hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer ml-0.5"
+                  title="Message options"
+                  aria-label="Message options"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
+              ) : onDeleteMessageForMe ? (
+                <button
+                  type="button"
+                  onClick={() => handleConfirmDeleteForMe()}
+                  disabled={deleteLoading}
+                  className="opacity-60 hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer ml-0.5 text-rose-500"
+                  title="Remove for me"
+                  aria-label="Remove for me"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              ) : null}
             </div>
           </div>
 
-          {/* Delete Confirmation Box */}
+          {/* Delete Confirmation Box (Delete for Me / Delete for Everyone) */}
           {showDeleteConfirm && (
-            <div className="mt-1.5 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="mt-1.5 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-xs flex flex-wrap items-center justify-between gap-2 animate-in fade-in">
               <span className="text-rose-700 dark:text-rose-300 font-semibold text-[11px]">
-                Delete this message for everyone?
+                Delete message?
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {onDeleteMessageForMe && (
+                  <button
+                    onClick={handleConfirmDeleteForMe}
+                    disabled={deleteLoading}
+                    className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer"
+                  >
+                    Delete for Me
+                  </button>
+                )}
+                {(isCurrentUser || canDeleteForEveryone) && !isDeleted && (
+                  <button
+                    onClick={handleConfirmDeleteForEveryone}
+                    disabled={deleteLoading}
+                    className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] cursor-pointer"
+                  >
+                    {deleteLoading ? 'Deleting...' : 'Delete for Everyone'}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-2 py-0.5 rounded text-slate-500 hover:bg-slate-200 text-[11px]"
+                  disabled={deleteLoading}
+                  className="px-2 py-1 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 text-[11px] cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
-                  onClick={handleConfirmDelete}
-                  disabled={deleteLoading}
-                  className="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700"
-                >
-                  {deleteLoading ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>
@@ -442,16 +627,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       </div>
 
-      {/* Floating Action Menu (Reply, React, Pin, Star, Edit, Delete, Copy) */}
+      {/* Floating Action Menu (Clean WhatsApp Style: Desktop on hover, Mobile on tap) */}
       {!isDeleted && (
         <div
-          className={`flex items-center gap-0.5 mt-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 shadow-xs z-10 ${
-            isCurrentUser ? 'mr-1' : 'ml-10'
-          }`}
+          className={`flex items-center gap-0.5 mt-0.5 transition-all bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 shadow-md z-10 ${
+            showActionsMenu
+              ? 'opacity-100 scale-100 pointer-events-auto'
+              : 'opacity-0 scale-95 pointer-events-none sm:group-hover:opacity-100 sm:group-hover:scale-100 sm:group-hover:pointer-events-auto'
+          } ${isCurrentUser ? 'mr-1 self-end' : 'ml-10 self-start'}`}
         >
           {/* Reaction button */}
           <button
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            onClick={() => {
+              setShowEmojiPicker(!showEmojiPicker);
+              setShowActionsMenu(false);
+            }}
             className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Add Reaction"
             aria-label="Add reaction to message"
@@ -461,7 +651,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
           {/* Reply */}
           <button
-            onClick={() => onReply(message)}
+            onClick={() => {
+              onReply(message);
+              setShowActionsMenu(false);
+            }}
             className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Reply"
             aria-label="Reply to message"
@@ -471,7 +664,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
           {/* Copy */}
           <button
-            onClick={handleCopyText}
+            onClick={() => {
+              handleCopyText();
+              setShowActionsMenu(false);
+            }}
             className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             title="Copy Text"
             aria-label="Copy message text"
@@ -479,10 +675,50 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
 
+          {/* AI Translate & Listen Aloud (Free AI-era helpers) */}
+          {message.text.trim() && (
+            <>
+              <button
+                onClick={() => {
+                  handleTranslateMessage();
+                  setShowActionsMenu(false);
+                }}
+                className={`p-1.5 rounded-full transition-colors ${
+                  translatedText
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60'
+                    : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+                title={translatedText ? 'Hide translation' : 'Translate message (Urdu / English)'}
+                aria-label="Translate message"
+              >
+                <Languages className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => {
+                  handleSpeakMessage();
+                  setShowActionsMenu(false);
+                }}
+                className={`p-1.5 rounded-full transition-colors ${
+                  isSpeaking
+                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 animate-pulse'
+                    : 'text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+                title={isSpeaking ? 'Stop reading' : 'Listen aloud'}
+                aria-label="Listen aloud"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+
           {/* Mark Important (User specific) */}
           {onToggleImportant && (
             <button
-              onClick={() => onToggleImportant(message.id)}
+              onClick={() => {
+                onToggleImportant(message.id);
+                setShowActionsMenu(false);
+              }}
               className={`p-1.5 rounded-full transition-colors ${
                 isImportant
                   ? 'text-amber-500'
@@ -498,7 +734,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Pin (if permitted) */}
           {canPin && (
             <button
-              onClick={() => onTogglePin(message.id, message.isPinned || false)}
+              onClick={() => {
+                onTogglePin(message.id, message.isPinned || false);
+                setShowActionsMenu(false);
+              }}
               className={`p-1.5 rounded-full transition-colors ${
                 message.isPinned
                   ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/60'
@@ -511,30 +750,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </button>
           )}
 
-          {/* Sender-Only Actions: Edit & Delete */}
+          {/* Sender-Only Edit Action */}
           {isCurrentUser && (
-            <>
-              <button
-                onClick={() => {
-                  setEditText(message.text);
-                  setIsEditing(true);
-                }}
-                className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                title="Edit Message"
-                aria-label="Edit message"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
+            <button
+              onClick={() => {
+                setEditText(message.text);
+                setIsEditing(true);
+                setShowActionsMenu(false);
+              }}
+              className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title="Edit Message"
+              aria-label="Edit message"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          )}
 
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
-                title="Delete Message"
-                aria-label="Delete message"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
+          {/* Delete (Available for Me to all users, plus For Everyone to sender/admin) */}
+          {(isCurrentUser || canDeleteForEveryone || onDeleteMessageForMe) && (
+            <button
+              onClick={() => {
+                setShowDeleteConfirm(true);
+                setShowActionsMenu(false);
+              }}
+              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+              title="Delete Message"
+              aria-label="Delete message"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       )}

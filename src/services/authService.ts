@@ -74,19 +74,23 @@ class AuthService {
       const now = new Date().toISOString();
 
       // Create User Profile in Firestore: users/{userId}
-      const userProfile: User = {
+      const normalizedPhone = params.phone ? params.phone.replace(/\D/g, '') : '';
+      const rawEmail = fbUser.email || params.email.trim();
+      const userProfile: User = cleanFirestoreData({
         id: fbUser.uid,
         name: params.fullName.trim(),
         fullName: params.fullName.trim(),
-        email: fbUser.email || params.email.trim(),
+        email: rawEmail,
+        emailLower: rawEmail.toLowerCase(),
         phone: params.phone?.trim() || undefined,
+        phoneNormalized: normalizedPhone || undefined,
         profileImage: params.profileImage || undefined,
         avatar: params.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(params.fullName.trim())}`,
         createdAt: now,
         updatedAt: now,
         lastLoginAt: now,
         status: 'online',
-      };
+      }) as User;
 
       await setDoc(doc(db, 'users', fbUser.uid), userProfile);
 
@@ -243,8 +247,11 @@ class AuthService {
    * Updates user profile in Firebase Auth and Firestore document
    */
   async updateUserProfile(userId: string, updates: Partial<User>): Promise<User> {
+    const normalizedPhone = typeof updates.phone === 'string' ? updates.phone.replace(/\D/g, '') : undefined;
     const cleanUpdates = cleanFirestoreData({
       ...updates,
+      ...(typeof updates.email === 'string' ? { emailLower: updates.email.trim().toLowerCase() } : {}),
+      ...(normalizedPhone !== undefined ? { phoneNormalized: normalizedPhone } : {}),
       updatedAt: new Date().toISOString(),
     });
 

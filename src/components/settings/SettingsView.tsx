@@ -51,6 +51,9 @@ export const SettingsView: React.FC = () => {
   const {
     currentFamily,
     familyRole,
+    members,
+    removeMember,
+    updateMemberRole,
     updateFamilyIdentity,
     uploadFamilyLogo,
   } = useFamily();
@@ -156,6 +159,9 @@ export const SettingsView: React.FC = () => {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [isSuperAdminDashboardOpen, setIsSuperAdminDashboardOpen] = useState(false);
+  const [membersDropdownOpen, setMembersDropdownOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{ userId: string; userName: string } | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
 
   // Language Search & Picker State
   const [langSearchQuery, setLangSearchQuery] = useState('');
@@ -926,6 +932,111 @@ export const SettingsView: React.FC = () => {
           </Card>
         )}
 
+        {/* Manage Members & Profiles (Collapsed Dropdown to prevent accidental removals) */}
+        {currentFamily && (
+          <Card className="p-0 overflow-hidden md:col-span-2">
+            <button
+              type="button"
+              onClick={() => setMembersDropdownOpen(!membersDropdownOpen)}
+              className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>Manage Members & Profiles</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {members.length}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 truncate">
+                    Tap to expand member list, update roles, or safely remove members
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${
+                  membersDropdownOpen ? 'rotate-180 text-indigo-600' : ''
+                }`}
+              />
+            </button>
+
+            {membersDropdownOpen && (
+              <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 animate-in fade-in duration-150">
+                {members.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3 text-center">No members in this space yet.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                    {members.map((m) => {
+                      const isMe = m.userId === user?.id;
+                      const isOwnerMember = m.role === 'owner';
+                      const canEditThisMember = isFamilyAdmin && !isMe && !isOwnerMember;
+                      return (
+                        <div
+                          key={m.id}
+                          className="p-3 bg-white dark:bg-slate-900 flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar
+                              src={m.userPhoto}
+                              name={m.userName || 'Member'}
+                              size="sm"
+                              className="shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                                <span>{m.userName || 'Family Member'}</span>
+                                {isMe && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                                    You
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[11px] text-slate-400 truncate capitalize">
+                                {m.role || 'member'}{m.userEmail ? ` • ${m.userEmail}` : ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          {canEditThisMember && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateMemberRole(m.userId, m.role === 'admin' ? 'member' : 'admin')
+                                }
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
+                              >
+                                {m.role === 'admin' ? 'Make Member' : 'Make Admin'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setMemberToRemove({
+                                    userId: m.userId,
+                                    userName: m.userName || 'Family Member',
+                                  })
+                                }
+                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                title="Remove member"
+                                aria-label="Remove member"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* User Profile Card & Sign Out */}
         <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-slate-200 dark:border-slate-800 md:col-span-2">
           <div className="flex items-center gap-3.5">
@@ -1157,6 +1268,48 @@ export const SettingsView: React.FC = () => {
       isOpen={isProfileModalOpen}
       onClose={() => setIsProfileModalOpen(false)}
     />
+
+    {/* 8. Confirm Remove Member Modal */}
+    <Modal
+      isOpen={Boolean(memberToRemove)}
+      onClose={() => !removingMember && setMemberToRemove(null)}
+      title="Remove Family Member?"
+      maxWidth="sm"
+    >
+      <div className="space-y-4">
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          Are you sure you want to remove <strong>{memberToRemove?.userName}</strong> from {currentFamily?.name}? They will lose access to this family space.
+        </p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMemberToRemove(null)}
+            disabled={removingMember}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={removingMember}
+            onClick={async () => {
+              if (!memberToRemove) return;
+              setRemovingMember(true);
+              try {
+                await removeMember(memberToRemove.userId, memberToRemove.userName);
+                setMemberToRemove(null);
+              } finally {
+                setRemovingMember(false);
+              }
+            }}
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+          >
+            Remove Member
+          </Button>
+        </div>
+      </div>
+    </Modal>
   </div>
 );
 };

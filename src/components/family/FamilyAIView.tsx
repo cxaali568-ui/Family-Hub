@@ -22,6 +22,8 @@ import {
   AlertCircle,
   ShieldCheck,
   Search,
+  Film,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -464,6 +466,32 @@ export const FamilyAIView: React.FC = () => {
               );
             })
           )}
+        </div>
+
+        {/* Direct External Links: Real Google Gemini & Google Flow */}
+        <div className="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 grid grid-cols-2 gap-1.5">
+          <a
+            href="https://gemini.google.com/app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[11px] font-bold transition-colors"
+            title="Open Real Google Gemini"
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Gemini</span>
+            <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
+          </a>
+          <a
+            href="https://labs.google/fx/tools/flow"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-[11px] font-bold transition-colors"
+            title="Open Google Flow — Free AI Video Studio"
+          >
+            <Film className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Google Flow</span>
+            <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
+          </a>
         </div>
 
         {/* Provider badge */}

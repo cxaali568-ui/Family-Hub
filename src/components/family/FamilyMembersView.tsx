@@ -61,6 +61,7 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
     members: familyMemberships,
     familyRole,
     familyPermissions,
+    setCurrentRoute,
     generateInvite,
     updateMemberRole,
     removeMember,
@@ -376,109 +377,50 @@ export const FamilyMembersView: React.FC<{ initialTab?: 'members' | 'children' |
 
   return (
     <div className="p-4 md:p-6 pb-28 lg:pb-12 max-w-6xl mx-auto space-y-6">
-      {/* Top Family Header */}
+      {/* Clean Family Members Directory Header */}
       <div className="p-5 md:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar
-            src={currentFamily.photo || currentFamily.avatar}
-            name={currentFamily.name}
-            size="xl"
-            className="ring-4 ring-indigo-500/10 shadow-sm shrink-0"
-          />
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100">
-                {currentFamily.name}
+                Family Members Directory
               </h1>
-              <Badge variant="primary">Active Family</Badge>
+              <Badge variant="primary">{memberProfiles.length} Members</Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
-              <span>{memberProfiles.length} Member Profiles</span>
-              <span>•</span>
-              <span>{children.length} Children</span>
-              <span>•</span>
-              <span>
-                Your Role: <strong className="uppercase text-indigo-600 dark:text-indigo-400">{familyRole || 'Member'}</strong>
-              </span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Household members, relatives, and app access for {currentFamily.name}.
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {familyPermissions.canManageMembers && (
-            <>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setEditingMember(null);
-                  setIsAddMemberOpen(true);
-                }}
-                icon={<UserPlus className="w-4 h-4" />}
-                className="font-bold"
-              >
-                Add Member
-              </Button>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentRoute('children')}
+            icon={<GraduationCap className="w-4 h-4 text-amber-500" />}
+            className="text-xs font-bold"
+          >
+            Children Profiles ({children.length}) →
+          </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditingChild(null);
-                  setIsAddChildOpen(true);
-                }}
-                icon={<Plus className="w-4 h-4" />}
-              >
-                Add Child
-              </Button>
-            </>
+          {familyPermissions.canManageMembers && (
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditingMember(null);
+                setIsAddMemberOpen(true);
+              }}
+              icon={<UserPlus className="w-4 h-4" />}
+              className="font-bold text-xs"
+            >
+              Add Member
+            </Button>
           )}
         </div>
-      </div>
-
-      {/* ---------------- My Own Personal Profile Card ---------------- */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-200/70 dark:border-indigo-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative group shrink-0">
-            <Avatar
-              src={currentUser?.avatar || currentUser?.profileImage}
-              name={currentUser?.name || 'User'}
-              size="lg"
-              status="online"
-              className="ring-4 ring-indigo-500/20 shadow-md"
-            />
-            <button
-              onClick={() => setIsUserProfileModalOpen(true)}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center text-xs shadow-md transition-transform active:scale-95 cursor-pointer ring-2 ring-white dark:ring-slate-900"
-              title="Change Profile Photo"
-            >
-              ✎
-            </button>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
-                {currentUser?.name || 'Your Account Profile'}
-              </h2>
-              <Badge variant="primary">My Profile</Badge>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs sm:max-w-md">
-              {currentUser?.email} {currentUser?.phone ? `• ${currentUser?.phone}` : ''}
-            </p>
-            <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mt-1">
-              Your profile photo and name appear in the Family Space header and family conversations.
-            </p>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsUserProfileModalOpen(true)}
-          icon={<User className="w-4 h-4 text-indigo-600" />}
-          className="shrink-0 font-bold border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 self-start sm:self-center"
-        >
-          Edit My Profile
-        </Button>
       </div>
 
       {/* ---------------- Upcoming Family Birthdays Section ---------------- */}

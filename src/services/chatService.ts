@@ -14,6 +14,7 @@ import {
   getDocs,
   where,
   writeBatch,
+  arrayUnion,
 } from 'firebase/firestore';
 import {
   ref,
@@ -94,6 +95,7 @@ class ChatService {
             updatedAt: data.updatedAt,
             editedAt: data.editedAt,
             deletedAt: data.deletedAt,
+            deletedFor: Array.isArray(data.deletedFor) ? data.deletedFor : [],
             replyTo: data.replyTo || undefined,
             attachments: data.attachments || undefined,
             reactions: data.reactions || {},
@@ -143,6 +145,7 @@ class ChatService {
       fileSize: att.fileSize,
       url: att.url,
       previewUrl: att.previewUrl || null,
+      ...(att.stickerMeta ? { stickerMeta: att.stickerMeta } : {}),
     })) || null;
 
     const messageData = {
@@ -167,12 +170,19 @@ class ChatService {
     // Update sender's read state
     await this.updateReadState(params.chatRoomId, params.familyId, params.sender.id, messageId);
 
+    const firstAtt = params.attachments?.[0];
     // Send in-app notification to family members (async non-blocking)
     this.broadcastMessageNotification({
       chatRoomId: params.chatRoomId,
       familyId: params.familyId,
       sender: params.sender,
-      previewText: params.text.trim() || (messageType === 'image' ? 'Sent a photo' : 'Sent an attachment'),
+      previewText:
+        params.text.trim() ||
+        (firstAtt?.fileType === 'sticker'
+          ? `🎭 ${firstAtt.stickerMeta?.caption || 'Sent a sticker'}`
+          : messageType === 'image'
+          ? 'Sent a photo'
+          : 'Sent an attachment'),
     });
 
     return messageId;
@@ -222,7 +232,100 @@ class ChatService {
   }
 
   /**
-   * Clears all messages in a chat room for all members
+   * Hides / deletes a single message only for the current user ("Delete for Me")
+   */
+  async deleteMessageForMe(chatRoomId: string, messageId: string, userId: string): Promise<void> {
+    if (!chatRoomId || !messageId || !userId) return;
+    // Save immediately in local cache
+    try {
+      const key = `familyhub_msg_delfor_${chatRoomId}_${userId}`;
+      const raw = localStorage.getItem(key);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(messageId)) {
+        list.push(messageId);
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+    } catch {}
+
+    const docRef = doc(db, 'chatRooms', chatRoomId, 'messages', messageId);
+    try {
+      await updateDoc(docRef, {
+        deletedFor: arrayUnion(userId),
+      });
+    } catch (err) {
+      console.warn("Could not persist deleteMessageForMe to Firestore:", err);
+    }
+  }
+
+  getLocalDeletedForIds(chatRoomId: string, userId: string): string[] {
+    if (!chatRoomId || !userId) return [];
+    try {
+      const raw = localStorage.getItem(`familyhub_msg_delfor_${chatRoomId}_${userId}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Clears chat history only for the current user ("Clear for Me")
+   */
+  async clearMessagesForMe(chatRoomId: string, familyId: string, userId: string): Promise<string> {
+    const now = new Date().toISOString();
+    try {
+      localStorage.setItem(`familyhub_chat_cleared_${chatRoomId}_${userId}`, now);
+    } catch {}
+
+    if (chatRoomId && userId) {
+      const docRef = doc(db, 'chatReadStates', `${chatRoomId}_${userId}`);
+      try {
+        await setDoc(
+          docRef,
+          {
+            id: `${chatRoomId}_${userId}`,
+            chatRoomId,
+            familyId,
+            userId,
+            clearedAt: now,
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn("Could not persist clearMessagesForMe to Firestore:", err);
+      }
+    }
+    return now;
+  }
+
+  subscribeClearedAtForUser(
+    chatRoomId: string,
+    userId: string,
+    callback: (clearedAt: string | null) => void
+  ): () => void {
+    if (!chatRoomId || !userId) {
+      callback(null);
+      return () => {};
+    }
+
+    try {
+      const localCleared = localStorage.getItem(`familyhub_chat_cleared_${chatRoomId}_${userId}`);
+      if (localCleared) callback(localCleared);
+    } catch {}
+
+    const docRef = doc(db, 'chatReadStates', `${chatRoomId}_${userId}`);
+    return onSnapshot(docRef, (snap) => {
+      if (snap.exists() && snap.data().clearedAt) {
+        const remoteCleared = snap.data().clearedAt as string;
+        try {
+          localStorage.setItem(`familyhub_chat_cleared_${chatRoomId}_${userId}`, remoteCleared);
+        } catch {}
+        callback(remoteCleared);
+      }
+    });
+  }
+
+  /**
+   * Clears all messages in a chat room for all members ("Clear for Everyone")
    */
   async clearAllMessages(chatRoomId: string, actor?: { id: string; name?: string }): Promise<void> {
     if (!chatRoomId) return;
@@ -299,7 +402,9 @@ class ChatService {
   }): Promise<Attachment> {
     const { familyId, chatRoomId, file, onProgress } = params;
     const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(fileExt);
+    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(fileExt);
+    const isVideo = file.type.startsWith('video/') || ['mp4', 'webm', 'mov', 'm4v', 'mkv'].includes(fileExt);
+    const resolvedType: Attachment['fileType'] = isImage ? 'image' : isVideo ? 'video' : 'document';
 
     const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `families/${familyId}/chat/${chatRoomId}/${Date.now()}_${safeFileName}`;
@@ -324,7 +429,7 @@ class ChatService {
                 resolve({
                   id: `att-${Date.now()}`,
                   fileName: file.name,
-                  fileType: isImage ? 'image' : 'document',
+                  fileType: resolvedType,
                   fileSize: file.size,
                   url: dataUrl,
                   previewUrl: isImage ? dataUrl : undefined,
@@ -346,7 +451,7 @@ class ChatService {
             const att: Attachment = {
               id: `att-${Date.now()}`,
               fileName: file.name,
-              fileType: isImage ? 'image' : 'document',
+              fileType: resolvedType,
               fileSize: file.size,
               url: downloadUrl,
               previewUrl: isImage ? downloadUrl : undefined,
@@ -514,10 +619,19 @@ class ChatService {
       snapshot.forEach((d) => {
         const data = d.data();
         if (data.userId && data.userId !== currentUserId) {
-          let isFresh = true;
-          if (data.updatedAt instanceof Timestamp) {
-            isFresh = now - data.updatedAt.toMillis() < 40000;
+          let isFresh = false;
+          // Must explicitly be in chat or actively typing
+          if (data.inChat === true || data.isTyping === true) {
+            if (data.updatedAt instanceof Timestamp) {
+              isFresh = now - data.updatedAt.toMillis() < 40000;
+            } else if (typeof data.updatedAt === 'string') {
+              const ms = new Date(data.updatedAt).getTime();
+              isFresh = !isNaN(ms) && (now - ms) < 40000;
+            } else if (data.updatedAt && typeof data.updatedAt.toMillis === 'function') {
+              isFresh = now - data.updatedAt.toMillis() < 40000;
+            }
           }
+
           if (isFresh) {
             activeIds.push(data.userId);
             if (data.isTyping && data.userName) {

@@ -11,6 +11,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({ attachment, 
   if (!attachment) return null;
 
   const isImage = attachment.fileType === 'image';
+  const isVideo = attachment.fileType === 'video';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
@@ -53,6 +54,14 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({ attachment, 
               src={attachment.url}
               alt={attachment.fileName}
               className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
+            />
+          ) : isVideo ? (
+            <video
+              src={attachment.url}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-[70vh] w-full max-w-full rounded-2xl bg-black shadow-lg"
             />
           ) : (
             <div className="text-center p-8 space-y-4 max-w-md">

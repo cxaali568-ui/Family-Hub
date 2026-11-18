@@ -18,6 +18,7 @@ import { AuthView } from './components/auth/AuthView';
 import { OnboardingView } from './components/family/OnboardingView';
 import { FamilyChatView } from './components/chat/FamilyChatView';
 import { FamilyMembersView } from './components/family/FamilyMembersView';
+import { ChildrenProfilesView } from './components/family/ChildrenProfilesView';
 import { FamilyMoneyView } from './components/family/FamilyMoneyView';
 import { FamilyExpensesView } from './components/expenses/FamilyExpensesView';
 import { FamilyMedicalView } from './components/family/FamilyMedicalView';
@@ -42,7 +43,7 @@ const MainContent: React.FC = () => {
     case 'family':
       return <FamilyMembersView initialTab="members" />;
     case 'children':
-      return <FamilyMembersView initialTab="children" />;
+      return <ChildrenProfilesView />;
     case 'medical':
       return <FamilyMedicalView />;
     case 'expenses':

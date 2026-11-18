@@ -32,7 +32,9 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Cake,
 } from 'lucide-react';
+import { BirthdayCardModal } from './BirthdayCardModal';
 
 interface ChildDetailModalProps {
   isOpen: boolean;
@@ -91,6 +93,7 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
   // Delete confirm
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isBirthdayCardOpen, setIsBirthdayCardOpen] = useState(false);
 
   // Subscriptions to guardians, fees, documents
   useEffect(() => {
@@ -274,11 +277,22 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
             )}
           </div>
 
-          <div className="shrink-0 text-center sm:text-right">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Monthly Fee</p>
-            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
-              Rs. {child.totalMonthlyFee.toLocaleString()}
-            </p>
+          <div className="shrink-0 text-center sm:text-right flex flex-col items-center sm:items-end gap-1.5">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-400">Monthly Fee</p>
+              <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                Rs. {child.totalMonthlyFee.toLocaleString()}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBirthdayCardOpen(true)}
+              className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 px-2.5 py-1 rounded-xl border border-rose-200/60 dark:border-rose-900/60 flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Design a Birthday Card"
+            >
+              <Cake className="w-3.5 h-3.5 text-rose-500" />
+              <span>Birthday Card</span>
+            </button>
           </div>
         </div>
 
@@ -988,6 +1002,14 @@ export const ChildDetailModal: React.FC<ChildDetailModalProps> = ({
           </div>
         </form>
       </Modal>
+
+      {/* Birthday Card Studio Modal */}
+      <BirthdayCardModal
+        isOpen={isBirthdayCardOpen}
+        onClose={() => setIsBirthdayCardOpen(false)}
+        selectedChild={child}
+        allChildren={child ? [child] : []}
+      />
     </>
   );
 };

@@ -188,6 +188,44 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && (resource == null || resource.data.ownerId == request.auth.uid);
     }
 
+    // --- Personal One-to-One Chats (Strict 2-Party Access) ---
+    match /personalChats/{chatId} {
+      allow get: if isAuthenticated() && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow list: if isAuthenticated() && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow create: if isAuthenticated() &&
+        request.auth.uid in request.resource.data.participantIds &&
+        request.resource.data.participantIds.size() == 2;
+      allow update: if isAuthenticated() &&
+        request.auth.uid in resource.data.participantIds;
+      allow delete: if isAuthenticated() &&
+        request.auth.uid in resource.data.participantIds;
+
+      match /messages/{messageId} {
+        allow get, list: if isAuthenticated() && (
+          resource == null ||
+          request.auth.uid in resource.data.participantIds ||
+          request.auth.uid == resource.data.senderId ||
+          request.auth.uid == resource.data.recipientId
+        );
+        allow create: if isAuthenticated() &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.auth.uid in request.resource.data.participantIds &&
+          request.resource.data.chatId == chatId;
+        allow update: if isAuthenticated() && (
+          request.auth.uid in resource.data.participantIds ||
+          request.auth.uid == resource.data.senderId ||
+          request.auth.uid == resource.data.recipientId
+        );
+        allow delete: if isAuthenticated() &&
+          resource.data.senderId == request.auth.uid;
+      }
+
+      match /typing/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && request.auth.uid == userId;
+      }
+    }
+
     match /test/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;

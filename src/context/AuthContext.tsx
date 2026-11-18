@@ -22,14 +22,52 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const CACHED_USER_KEY = 'familyhub_cached_user_v1';
+
+const readCachedUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.id ? (parsed as User) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedUser = (u: User | null) => {
+  try {
+    if (u) {
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(u));
+    } else {
+      localStorage.removeItem(CACHED_USER_KEY);
+      // Clear cached family lists on sign out
+      Object.keys(localStorage).forEach((k) => {
+        if (k.startsWith('familyhub_cached_families_') || k.startsWith('familyhub_cached_members_')) {
+          localStorage.removeItem(k);
+        }
+      });
+    }
+  } catch {
+    // Ignore storage quota / private mode errors
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(() => readCachedUser());
+  const [loading, setLoading] = useState<boolean>(() => !readCachedUser());
 
   useEffect(() => {
-    // Real-time Firebase Authentication listener
+    // Real-time Firebase Authentication listener verifies session in background
     const unsubscribe = authService.onAuthStateChanged((authUser, authLoading) => {
-      setUser(authUser);
+      if (authUser) {
+        writeCachedUser(authUser);
+        setUser(authUser);
+      } else if (!authLoading) {
+        // Real security/sign-out event: no active Firebase session
+        writeCachedUser(null);
+        setUser(null);
+      }
       setLoading(authLoading);
     });
 
@@ -40,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const u = await authService.login(email, password);
+      writeCachedUser(u);
       setUser(u);
       return u;
     } finally {
@@ -57,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const u = await authService.register(params);
+      writeCachedUser(u);
       setUser(u);
       return u;
     } finally {
@@ -68,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await authService.logout();
+      writeCachedUser(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -81,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (updates: Partial<User>): Promise<User> => {
     if (!user) throw new Error('Not logged in');
     const updated = await authService.updateUserProfile(user.id, updates);
+    writeCachedUser(updated);
     setUser(updated);
     return updated;
   };
@@ -88,7 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const uploadAvatar = async (file: File, onProgress?: (p: number) => void): Promise<string> => {
     if (!user) throw new Error('Not logged in');
     const url = await authService.uploadUserAvatar(user.id, file, onProgress);
-    setUser((prev) => (prev ? { ...prev, avatar: url, profileImage: url } : null));
+    setUser((prev) => {
+      const next = prev ? { ...prev, avatar: url, profileImage: url } : null;
+      writeCachedUser(next);
+      return next;
+    });
     return url;
   };
 
